@@ -6,14 +6,15 @@ use App\Casts\MoneyCast;
 use App\Enums\CycleStatus;
 use App\Enums\WeekendTradingPolicy;
 use Brick\Money\Money;
+use Carbon\CarbonInterface;
 use Database\Factories\CycleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * A single savings-and-lending cycle. Every record in the application is scoped to one.
@@ -53,6 +54,31 @@ class Cycle extends Model
     /** @use HasFactory<CycleFactory> */
     use HasFactory, LogsActivity;
 
+    /**
+     * Constitution defaults, mirroring the migration.
+     *
+     * These live on the model as well as the database so a freshly instantiated cycle
+     * can be read from without a round trip, which money calculations rely on.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'registration_closes_after_month' => 3,
+        'loan_lockdown_starts_month' => 10,
+        'lockdown_savings_cap_ngwee' => 50_000,
+        'joining_fee_ngwee' => 100_000,
+        'late_joining_fee_ngwee' => 200_000,
+        'social_fund_contribution_ngwee' => 25_000,
+        'min_savings_ngwee' => 50_000,
+        'savings_increment_ngwee' => 50_000,
+        'borrowing_target_ngwee' => 5_000_000,
+        'late_transfer_penalty_per_day_ngwee' => 10_000,
+        'monthly_interest_bps' => 500,
+        'social_fund_interest_bps' => 1000,
+        'missed_installment_penalty_bps' => 1000,
+        'max_loan_multiple' => 2,
+    ];
+
     /** @return HasMany<CycleMonth, $this> */
     public function months(): HasMany
     {
@@ -88,14 +114,14 @@ class Cycle extends Model
         return $this->isLockdownMonth($sequence) ? $this->lockdown_savings_cap_ngwee : null;
     }
 
-    public function daysToFinalRepayment(?Carbon $from = null): int
+    public function daysToFinalRepayment(?CarbonInterface $from = null): int
     {
         return (int) ($from ?? Carbon::today())->diffInDays($this->final_repayment_date, false);
     }
 
     public function getActivitylogOptions(): LogOptions
     {
-        return LogOptions::defaults()->logFillable()->logOnlyDirty()->dontSubmitEmptyLogs();
+        return LogOptions::defaults()->logFillable()->logOnlyDirty()->dontLogEmptyChanges();
     }
 
     /** @return array<string, string> */

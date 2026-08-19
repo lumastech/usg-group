@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CycleMonthStatus;
 use App\Enums\InterestAllocationMethod;
+use Carbon\CarbonInterface;
 use Database\Factories\CycleMonthFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -43,14 +44,14 @@ class CycleMonth extends Model
     }
 
     /** Declarations are only accepted between the 1st at 08:00 and the end of the 3rd. */
-    public function declarationsOpenAt(?Carbon $at = null): bool
+    public function declarationsOpenAt(?CarbonInterface $at = null): bool
     {
         $at ??= Carbon::now();
 
         return $at->betweenIncluded($this->declarations_open_at, $this->declarations_close_at);
     }
 
-    public function isLate(?Carbon $at = null): bool
+    public function isLate(?CarbonInterface $at = null): bool
     {
         return ($at ?? Carbon::now())->greaterThan($this->declarations_close_at);
     }

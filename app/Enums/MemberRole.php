@@ -11,7 +11,11 @@ enum MemberRole: string
     case ViceChairperson = 'Vice-Chairperson';
     case Admin = 'Admin';
 
-    /** Roles whose holders may act as one of the two required approvers. */
+    /**
+     * Roles whose holders may act as one of the two required approvers.
+     *
+     * @return array<int, self>
+     */
     public static function committee(): array
     {
         return [self::Treasurer, self::ViceTreasurer, self::Chairperson, self::ViceChairperson];
