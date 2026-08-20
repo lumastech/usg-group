@@ -1,5 +1,9 @@
 <?php
 
+use App\Enums\MemberRole;
+use App\Models\Cycle;
+use App\Models\Member;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -44,7 +48,22 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
-{
-    // ..
+/**
+ * A member with a portal login holding one role.
+ *
+ * Committee membership is read through the attached user's roles, so anything testing
+ * the two-person rule needs a member built this way rather than a bare factory.
+ */
+function memberWithRole(
+    Cycle $cycle,
+    MemberRole $role = MemberRole::Member,
+    array $attributes = [],
+): Member {
+    $user = User::factory()->create();
+    $user->assignRole($role->value);
+
+    return Member::factory()
+        ->for($cycle)
+        ->create($attributes + ['user_id' => $user->id])
+        ->load('user');
 }

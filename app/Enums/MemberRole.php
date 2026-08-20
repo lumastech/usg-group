@@ -66,7 +66,9 @@ enum MemberRole: string
                 Permission::MembersManage,
                 Permission::MembersView,
                 Permission::LoansView,
+                Permission::LoansRequest,
                 Permission::LoansApprove,
+                Permission::FundView,
                 Permission::FundApproveOutflow,
                 Permission::PayoutsApprove,
                 Permission::GovernanceRecord,
@@ -79,8 +81,11 @@ enum MemberRole: string
             self::Treasurer, self::ViceTreasurer => [
                 Permission::MembersView,
                 Permission::LoansView,
+                Permission::LoansRequest,
                 Permission::LoansDisburse,
                 Permission::LoansRecordRepayment,
+                Permission::FundView,
+                Permission::FundRecord,
                 Permission::FundApproveOutflow,
                 Permission::PayoutsExecute,
                 Permission::SavingsView,
@@ -92,6 +97,7 @@ enum MemberRole: string
 
             self::Member => [
                 Permission::DeclarationsSubmitOwn,
+                Permission::LoansRequest,
             ],
         };
     }

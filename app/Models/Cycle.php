@@ -96,6 +96,22 @@ class Cycle extends Model
         return $this->months()->where('sequence', $sequence)->first();
     }
 
+    /**
+     * The cycle month a date falls in.
+     *
+     * Dates before the cycle opens resolve to the first month and dates past its close
+     * to the last, so a request captured slightly outside the calendar still lands on a
+     * real month rather than on null.
+     */
+    public function monthFor(CarbonInterface $date): ?CycleMonth
+    {
+        $months = $this->months()->get();
+
+        return $months->firstWhere(
+            fn (CycleMonth $month): bool => $month->month->isSameMonth($date)
+        ) ?? ($date->lessThan($this->starts_on) ? $months->first() : $months->last());
+    }
+
     /** Whether new members may still register, given the month they would join in. */
     public function registrationOpenForMonth(int $sequence): bool
     {

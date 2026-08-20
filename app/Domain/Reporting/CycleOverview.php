@@ -2,10 +2,14 @@
 
 namespace App\Domain\Reporting;
 
+use App\Enums\LoanStatus;
+use App\Enums\LoanTransactionType;
 use App\Enums\MemberStatus;
 use App\Models\Cycle;
 use App\Models\CycleMonth;
 use App\Models\InterestAllocation;
+use App\Models\Loan;
+use App\Models\LoanTransaction;
 use App\Models\Member;
 use App\Models\SavingsTransaction;
 use App\Support\Kwacha;
@@ -15,8 +19,9 @@ use Illuminate\Support\Carbon;
 /**
  * Group-wide figures for the administration dashboard.
  *
- * Loan and social fund totals are reported as null until those ledgers exist, so the
- * dashboard can show "not yet tracked" rather than a misleading zero.
+ * Social fund totals are still reported as null until module 4 lands, so the dashboard
+ * can show "not yet tracked" rather than a misleading zero. Lending is real from module
+ * 3 onwards and reads straight off the loan ledger.
  */
 class CycleOverview
 {
@@ -33,6 +38,7 @@ class CycleOverview
             'month' => $this->monthSummary($cycle, $currentMonth, $asOf),
             'members' => $this->memberSummary($cycle),
             'money' => $this->moneySummary($cycle, $currentMonth),
+            'lending' => $this->lendingSummary($cycle, $currentMonth),
         ];
     }
 
@@ -139,11 +145,65 @@ class CycleOverview
             'members_saved_this_month' => $savedThisMonth,
             'ledger_started' => $totalSavings > 0 || $monthIds->isEmpty(),
 
-            // Awaiting the loans and social fund modules.
-            'loans_outstanding' => null,
+            'loans_outstanding' => Kwacha::format($this->outstandingLoansNgwee($cycle)),
+
+            // Awaiting the social fund module.
             'social_fund_balance' => null,
             'negative_net_value_members' => null,
         ];
+    }
+
+    /**
+     * What the fund has lent out, what it is about to lend, and who is behind.
+     *
+     * Every figure is read off the loan ledger rather than the cached snapshots, so the
+     * dashboard is right on the trading day even when a rebuild is overdue.
+     *
+     * @return array<string, mixed>
+     */
+    protected function lendingSummary(Cycle $cycle, ?CycleMonth $month): array
+    {
+        $queue = Loan::query()
+            ->forCycle($cycle)
+            ->where('status', LoanStatus::Approved->value)
+            ->get(['id', 'principal_ngwee']);
+
+        return [
+            'outstanding_ngwee' => $this->outstandingLoansNgwee($cycle),
+            'loans_running' => Loan::query()->forCycle($cycle)->outstanding()->count(),
+            'queue_count' => $queue->count(),
+            'queue_ngwee' => (int) $queue->sum(fn (Loan $loan): int => Kwacha::toNgwee($loan->principal_ngwee)),
+            'members_penalised_this_month' => $this->membersPenalisedIn($cycle, $month),
+        ];
+    }
+
+    /** The group's money still out on loan, from the ledger's own running sum. */
+    protected function outstandingLoansNgwee(Cycle $cycle): int
+    {
+        return max(0, (int) LoanTransaction::query()
+            ->join('loans', 'loans.id', '=', 'loan_transactions.loan_id')
+            ->where('loans.cycle_id', $cycle->id)
+            ->selectRaw("COALESCE(SUM(CASE WHEN loan_transactions.type IN ('repayment', 'write_off') THEN -loan_transactions.amount_ngwee ELSE loan_transactions.amount_ngwee END), 0) AS balance")
+            ->value('balance'));
+    }
+
+    /** How many members were charged a penalty in the month, late or missed alike. */
+    protected function membersPenalisedIn(Cycle $cycle, ?CycleMonth $month): int
+    {
+        if ($month === null) {
+            return 0;
+        }
+
+        return LoanTransaction::query()
+            ->join('loans', 'loans.id', '=', 'loan_transactions.loan_id')
+            ->where('loans.cycle_id', $cycle->id)
+            ->where('loan_transactions.cycle_month_id', $month->id)
+            ->whereIn('loan_transactions.type', [
+                LoanTransactionType::LatePenaltyDaily->value,
+                LoanTransactionType::MissedInstallmentPenalty->value,
+            ])
+            ->distinct('loans.member_id')
+            ->count('loans.member_id');
     }
 
     /**

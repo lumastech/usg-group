@@ -21,10 +21,13 @@ enum Permission: string
     case DeclarationsSubmitOwn = 'declarations.submit-own';
 
     case LoansView = 'loans.view';
+    case LoansRequest = 'loans.request';
     case LoansApprove = 'loans.approve';
     case LoansDisburse = 'loans.disburse';
     case LoansRecordRepayment = 'loans.record-repayment';
 
+    case FundView = 'fund.view';
+    case FundRecord = 'fund.record';
     case FundApproveOutflow = 'fund.approve-outflow';
 
     case PayoutsApprove = 'payouts.approve';
@@ -58,9 +61,12 @@ enum Permission: string
             self::DeclarationsView => 'View declarations',
             self::DeclarationsSubmitOwn => 'Submit own declaration',
             self::LoansView => 'View loans',
+            self::LoansRequest => 'Request a loan',
             self::LoansApprove => 'Approve loans',
             self::LoansDisburse => 'Disburse loans',
             self::LoansRecordRepayment => 'Record loan repayments',
+            self::FundView => 'View the social fund',
+            self::FundRecord => 'Record social fund entries',
             self::FundApproveOutflow => 'Approve fund outflows',
             self::PayoutsApprove => 'Approve payouts',
             self::PayoutsExecute => 'Execute payouts',

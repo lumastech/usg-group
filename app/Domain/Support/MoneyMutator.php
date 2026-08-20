@@ -41,4 +41,36 @@ class MoneyMutator
             return $result;
         });
     }
+
+    /**
+     * The same, for a mutation no person initiated.
+     *
+     * Interest charges and the daily late penalty are posted by the scheduler on the
+     * trading date, so there is no causer to name — but the entry still belongs in the
+     * money log, attributed to the system.
+     *
+     * @template TResult
+     *
+     * @param  Closure(): TResult  $operation
+     * @param  array<string, mixed>  $context
+     * @return TResult
+     */
+    public function system(string $reason, Closure $operation, array $context = []): mixed
+    {
+        return DB::transaction(function () use ($reason, $operation, $context) {
+            $result = $operation();
+
+            $logger = activity('money')
+                ->withProperties($context + ['actor_name' => 'System'])
+                ->event('money.mutated');
+
+            if ($result instanceof Model) {
+                $logger->performedOn($result);
+            }
+
+            $logger->log($reason);
+
+            return $result;
+        });
+    }
 }

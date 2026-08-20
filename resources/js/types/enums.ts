@@ -16,6 +16,17 @@ export type ApprovalStatus = (typeof ApprovalStatus)[keyof typeof ApprovalStatus
 
 export const approvalStatusValues: readonly ApprovalStatus[] = ['pending', 'partially_approved', 'approved', 'rejected'];
 
+export const CollateralClaimStatus = {
+    Draft: 'draft',
+    CommitteeSignOff: 'committee_sign_off',
+    Enforced: 'enforced',
+    Released: 'released',
+} as const;
+
+export type CollateralClaimStatus = (typeof CollateralClaimStatus)[keyof typeof CollateralClaimStatus];
+
+export const collateralClaimStatusValues: readonly CollateralClaimStatus[] = ['draft', 'committee_sign_off', 'enforced', 'released'];
+
 export const CycleMonthStatus = {
     Pending: 'pending',
     DeclarationsOpen: 'declarations_open',
@@ -57,6 +68,44 @@ export const InterestAllocationMethod = {
 export type InterestAllocationMethod = (typeof InterestAllocationMethod)[keyof typeof InterestAllocationMethod];
 
 export const interestAllocationMethodValues: readonly InterestAllocationMethod[] = ['own_savings_flat', 'pooled_pro_rata'];
+
+export const LoanScheduleItemStatus = {
+    Pending: 'pending',
+    Paid: 'paid',
+    PartiallyPaid: 'partially_paid',
+    Missed: 'missed',
+} as const;
+
+export type LoanScheduleItemStatus = (typeof LoanScheduleItemStatus)[keyof typeof LoanScheduleItemStatus];
+
+export const loanScheduleItemStatusValues: readonly LoanScheduleItemStatus[] = ['pending', 'paid', 'partially_paid', 'missed'];
+
+export const LoanStatus = {
+    Requested: 'requested',
+    Approved: 'approved',
+    Disbursed: 'disbursed',
+    Repaying: 'repaying',
+    Settled: 'settled',
+    Defaulted: 'defaulted',
+    Rejected: 'rejected',
+} as const;
+
+export type LoanStatus = (typeof LoanStatus)[keyof typeof LoanStatus];
+
+export const loanStatusValues: readonly LoanStatus[] = ['requested', 'approved', 'disbursed', 'repaying', 'settled', 'defaulted', 'rejected'];
+
+export const LoanTransactionType = {
+    Disbursement: 'disbursement',
+    InterestCharge: 'interest_charge',
+    Repayment: 'repayment',
+    LatePenaltyDaily: 'late_penalty_daily',
+    MissedInstallmentPenalty: 'missed_installment_penalty',
+    WriteOff: 'write_off',
+} as const;
+
+export type LoanTransactionType = (typeof LoanTransactionType)[keyof typeof LoanTransactionType];
+
+export const loanTransactionTypeValues: readonly LoanTransactionType[] = ['disbursement', 'interest_charge', 'repayment', 'late_penalty_daily', 'missed_installment_penalty', 'write_off'];
 
 export const MemberRole = {
     Member: 'member',
@@ -102,6 +151,7 @@ export const Permission = {
     DeclarationsView: 'declarations.view',
     DeclarationsSubmitOwn: 'declarations.submit-own',
     LoansView: 'loans.view',
+    LoansRequest: 'loans.request',
     LoansApprove: 'loans.approve',
     LoansDisburse: 'loans.disburse',
     LoansRecordRepayment: 'loans.record-repayment',
@@ -115,7 +165,7 @@ export const Permission = {
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
 
-export const permissionValues: readonly Permission[] = ['members.view', 'members.manage', 'savings.view', 'savings.record', 'declarations.view', 'declarations.submit-own', 'loans.view', 'loans.approve', 'loans.disburse', 'loans.record-repayment', 'fund.approve-outflow', 'payouts.approve', 'payouts.execute', 'governance.record', 'reports.view', 'cycles.manage'];
+export const permissionValues: readonly Permission[] = ['members.view', 'members.manage', 'savings.view', 'savings.record', 'declarations.view', 'declarations.submit-own', 'loans.view', 'loans.request', 'loans.approve', 'loans.disburse', 'loans.record-repayment', 'fund.approve-outflow', 'payouts.approve', 'payouts.execute', 'governance.record', 'reports.view', 'cycles.manage'];
 
 export const SavingsTransactionType = {
     Contribution: 'contribution',

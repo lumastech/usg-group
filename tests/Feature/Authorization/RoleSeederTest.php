@@ -51,11 +51,11 @@ it('lets the treasurer disburse loans but never approve them', function () {
         ->and($treasurer->hasPermissionTo(PermissionEnum::LoansApprove->value))->toBeFalse();
 });
 
-it('gives an ordinary member only their own declaration', function () {
+it('gives an ordinary member only their own declaration and their own loan request', function () {
     $member = Role::findByName(MemberRole::Member->value);
 
     expect($member->permissions->pluck('name')->all())
-        ->toBe([PermissionEnum::DeclarationsSubmitOwn->value]);
+        ->toBe([PermissionEnum::DeclarationsSubmitOwn->value, PermissionEnum::LoansRequest->value]);
 });
 
 it('never lets an ordinary member touch money or members', function () {

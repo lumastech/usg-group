@@ -83,7 +83,7 @@ export const adminNavigation: NavSection[] = [
             },
             {
                 title: 'Disbursements',
-                href: '/app/disbursements',
+                href: '/app/loans/queue',
                 icon: Banknote,
                 permissions: ['loans.disburse'],
             },
@@ -130,6 +130,6 @@ export const memberNavigation: NavItem[] = [
         permissions: ['declarations.submit-own'],
     },
     { title: 'Savings', href: '/my/savings', icon: Wallet },
-    { title: 'Loans', href: '/my/loans', icon: HandCoins },
+    { title: 'Loans', href: '/my/loan', icon: HandCoins },
     { title: 'Statement', href: '/my/statement', icon: FileText },
 ];

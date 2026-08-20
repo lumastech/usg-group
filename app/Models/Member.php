@@ -60,6 +60,12 @@ class Member extends Model
         return $this->hasMany(SavingsTransaction::class);
     }
 
+    /** @return HasMany<Loan, $this> */
+    public function loans(): HasMany
+    {
+        return $this->hasMany(Loan::class)->orderByDesc('requested_at');
+    }
+
     /** @return HasMany<NextOfKin, $this> */
     public function nextOfKin(): HasMany
     {

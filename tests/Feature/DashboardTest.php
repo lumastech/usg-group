@@ -134,7 +134,7 @@ it('defers the chase list and loads it on a partial reload', function () {
         ->assertJsonPath('props.membersMissingSavings.0.full_name', 'Still Owing');
 });
 
-it('shows loan and social fund totals as not yet tracked', function () {
+it('reports lending from the loan ledger and the social fund as not yet tracked', function () {
     Carbon::setTestNow('2026-08-19');
 
     $cycle = Cycle::factory()->create();
@@ -143,8 +143,11 @@ it('shows loan and social fund totals as not yet tracked', function () {
     $this->actingAs(User::factory()->create());
 
     $this->get(route('app.dashboard'))->assertInertia(fn ($page) => $page
-        ->where('overview.money.loans_outstanding', null)
+        ->where('overview.money.loans_outstanding', 'K0.00')
         ->where('overview.money.social_fund_balance', null)
+        ->where('overview.lending.outstanding_ngwee', 0)
+        ->where('overview.lending.queue_count', 0)
+        ->where('overview.lending.members_penalised_this_month', 0)
     );
 });
 

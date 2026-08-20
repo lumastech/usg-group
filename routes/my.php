@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\My\DashboardController;
+use App\Http\Controllers\My\LoanController;
 use App\Http\Controllers\My\ProfileController;
 use App\Http\Controllers\My\SavingsController;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,11 @@ Route::middleware(['auth', 'verified'])->prefix('my')->name('my.')->group(functi
 
     Route::get('savings', SavingsController::class)->name('savings');
     Route::get('savings/statement', [SavingsController::class, 'statement'])->name('savings.statement');
+
+    Route::get('loan', [LoanController::class, 'show'])->name('loan');
+    Route::post('loan', [LoanController::class, 'store'])
+        ->middleware('permission:loans.request')
+        ->name('loan.store');
 
     Route::get('profile', [ProfileController::class, 'show'])->name('profile');
     Route::put('profile/{member}', [ProfileController::class, 'update'])->name('profile.update');

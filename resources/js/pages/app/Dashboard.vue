@@ -6,7 +6,13 @@
  * the reports render — it never recomputes a total of its own. The month's
  * declaration and trading windows are left to CycleBanner in the layout.
  */
-import { CalendarDays, Coins, PiggyBank, Wallet } from '@lucide/vue';
+import {
+    CalendarDays,
+    Coins,
+    PiggyBank,
+    TriangleAlert,
+    Wallet,
+} from '@lucide/vue';
 import { computed } from 'vue';
 
 import { AppCard, EmptyState, StatCard } from '@/components/unity';
@@ -53,6 +59,13 @@ interface Overview {
         loans_outstanding: string | null;
         social_fund_balance: string | null;
         negative_net_value_members: number | null;
+    };
+    lending: {
+        outstanding_ngwee: number;
+        loans_running: number;
+        queue_count: number;
+        queue_ngwee: number;
+        members_penalised_this_month: number;
     };
 }
 
@@ -252,11 +265,23 @@ const description = computed(() => {
                 </AppCard>
             </div>
 
-            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard
                     label="Loans outstanding"
-                    :value="overview.money.loans_outstanding ?? '—'"
-                    hint="Available once the loans module lands"
+                    :ngwee="overview.lending.outstanding_ngwee"
+                    :hint="`${overview.lending.loans_running} loans running`"
+                    accent="brand"
+                />
+                <StatCard
+                    label="In the queue"
+                    :ngwee="overview.lending.queue_ngwee"
+                    :hint="`${overview.lending.queue_count} approved and awaiting the trading day`"
+                />
+                <StatCard
+                    label="Penalised this month"
+                    :value="overview.lending.members_penalised_this_month"
+                    :icon="TriangleAlert"
+                    hint="Members charged a late or missed-installment penalty"
                 />
                 <StatCard
                     label="Social fund"
