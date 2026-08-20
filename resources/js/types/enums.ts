@@ -37,6 +37,18 @@ export type CollateralClaimStatus = (typeof CollateralClaimStatus)[keyof typeof 
 
 export const collateralClaimStatusValues: readonly CollateralClaimStatus[] = ['draft', 'committee_sign_off', 'enforced', 'released'];
 
+export const CommitteeRole = {
+    Chairperson: 'chairperson',
+    ViceChairperson: 'vice_chairperson',
+    Treasurer: 'treasurer',
+    ViceTreasurer: 'vice_treasurer',
+    Signatory: 'signatory',
+} as const;
+
+export type CommitteeRole = (typeof CommitteeRole)[keyof typeof CommitteeRole];
+
+export const committeeRoleValues: readonly CommitteeRole[] = ['chairperson', 'vice_chairperson', 'treasurer', 'vice_treasurer', 'signatory'];
+
 export const CycleMonthStatus = {
     Pending: 'pending',
     DeclarationsOpen: 'declarations_open',
@@ -149,6 +161,16 @@ export type LoanTransactionType = (typeof LoanTransactionType)[keyof typeof Loan
 
 export const loanTransactionTypeValues: readonly LoanTransactionType[] = ['disbursement', 'interest_charge', 'repayment', 'late_penalty_daily', 'missed_installment_penalty', 'write_off'];
 
+export const MeetingType = {
+    Monthly: 'monthly',
+    Special: 'special',
+    ShareOut: 'share_out',
+} as const;
+
+export type MeetingType = (typeof MeetingType)[keyof typeof MeetingType];
+
+export const meetingTypeValues: readonly MeetingType[] = ['monthly', 'special', 'share_out'];
+
 export const MemberRole = {
     Member: 'member',
     Treasurer: 'treasurer',
@@ -172,6 +194,16 @@ export const MemberStatus = {
 export type MemberStatus = (typeof MemberStatus)[keyof typeof MemberStatus];
 
 export const memberStatusValues: readonly MemberStatus[] = ['active', 'left_early', 'expelled', 'deceased'];
+
+export const MotionType = {
+    NoConfidence: 'no_confidence',
+    Amendment: 'amendment',
+    General: 'general',
+} as const;
+
+export type MotionType = (typeof MotionType)[keyof typeof MotionType];
+
+export const motionTypeValues: readonly MotionType[] = ['no_confidence', 'amendment', 'general'];
 
 export const NextOfKinRelationship = {
     Spouse: 'spouse',
@@ -272,6 +304,25 @@ export const SocialFundTransactionType = {
 export type SocialFundTransactionType = (typeof SocialFundTransactionType)[keyof typeof SocialFundTransactionType];
 
 export const socialFundTransactionTypeValues: readonly SocialFundTransactionType[] = ['contribution', 'late_penalty_inflow', 'funeral_grant', 'unity_baby_grant', 'gathering_expense', 'diaspora_apportionment', 'adjustment'];
+
+export const TermEndReason = {
+    TermEnd: 'term_end',
+    Resigned: 'resigned',
+    Removed: 'removed',
+} as const;
+
+export type TermEndReason = (typeof TermEndReason)[keyof typeof TermEndReason];
+
+export const termEndReasonValues: readonly TermEndReason[] = ['term_end', 'resigned', 'removed'];
+
+export const ThresholdBasis = {
+    TotalMembers: 'total_members',
+    MembersPresent: 'members_present',
+} as const;
+
+export type ThresholdBasis = (typeof ThresholdBasis)[keyof typeof ThresholdBasis];
+
+export const thresholdBasisValues: readonly ThresholdBasis[] = ['total_members', 'members_present'];
 
 export const TradingSessionStatus = {
     Open: 'open',

@@ -11,8 +11,10 @@ import {
     House,
     LayoutGrid,
     PiggyBank,
+    ScrollText,
     ShieldCheck,
     Users,
+    Vote,
     Wallet,
 } from '@lucide/vue';
 
@@ -123,10 +125,34 @@ export const adminNavigation: NavSection[] = [
                 permissions: ['members.view', 'members.manage'],
             },
             {
-                title: 'Governance',
-                href: '/app/governance',
+                title: 'Committee',
+                href: '/app/governance/committee',
                 icon: Gavel,
-                permissions: ['governance.record'],
+                permissions: [
+                    'governance.record',
+                    'reports.view',
+                    'members.view',
+                ],
+            },
+            {
+                title: 'Meetings',
+                href: '/app/governance/meetings',
+                icon: Vote,
+                permissions: [
+                    'governance.record',
+                    'reports.view',
+                    'members.view',
+                ],
+            },
+            {
+                title: 'Amendments',
+                href: '/app/governance/amendments',
+                icon: ScrollText,
+                permissions: [
+                    'governance.record',
+                    'reports.view',
+                    'members.view',
+                ],
             },
             {
                 title: 'Cycle',

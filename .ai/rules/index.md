@@ -8,11 +8,12 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Http/Controllers/** | .ai/rules/controllers.md |
 | app/Domain/Declarations/** | .ai/rules/declarations.md |
 | app/Domain/** | .ai/rules/domain.md |
+| app/Domain/Governance/** | .ai/rules/governance.md |
 | app/Listeners/** | .ai/rules/listeners.md |
 | app/Domain/Loans/**, app/Domain/Loans/LoanEligibilityService.php | .ai/rules/loans.md |
 | app/Domain/Members/** | .ai/rules/members.md |
 | database/migrations/** | .ai/rules/migrations.md |
-| app/Models/** | .ai/rules/models.md |
+| app/Models/**, app/Models/CommitteeTerm.php | .ai/rules/models.md |
 | app/Domain/Payouts/** | .ai/rules/payouts.md |
 | app/Http/Resources/** | .ai/rules/resources.md |
 | resources/js/routes/** | .ai/rules/routes.md |

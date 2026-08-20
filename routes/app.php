@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\App\AmendmentController;
 use App\Http\Controllers\App\ClosureController;
 use App\Http\Controllers\App\ClosureExecutionController;
 use App\Http\Controllers\App\CollateralClaimController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\App\DeclarationController;
 use App\Http\Controllers\App\DeclarationExportController;
 use App\Http\Controllers\App\DiasporaApportionmentController;
 use App\Http\Controllers\App\FuneralGrantClaimController;
+use App\Http\Controllers\App\GovernanceCommitteeController;
 use App\Http\Controllers\App\GrantClaimController;
 use App\Http\Controllers\App\LoanApprovalController;
 use App\Http\Controllers\App\LoanController;
@@ -18,9 +20,12 @@ use App\Http\Controllers\App\LoanExportController;
 use App\Http\Controllers\App\LoanMatrixController;
 use App\Http\Controllers\App\LoanRepaymentController;
 use App\Http\Controllers\App\LoanTargetController;
+use App\Http\Controllers\App\MeetingAttendanceController;
+use App\Http\Controllers\App\MeetingController;
 use App\Http\Controllers\App\MemberController;
 use App\Http\Controllers\App\MemberInviteController;
 use App\Http\Controllers\App\MemberStatusController;
+use App\Http\Controllers\App\MotionController;
 use App\Http\Controllers\App\PayoutVoucherController;
 use App\Http\Controllers\App\SavingsController;
 use App\Http\Controllers\App\SavingsDepositController;
@@ -210,6 +215,38 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
     Route::post('closures/{member}', ClosureExecutionController::class)
         ->middleware('permission:payouts.execute')
         ->name('closures.execute');
+
+    /*
+     * Governance. Who holds office, what the group met about and how it voted is read
+     * by the whole committee — it is minuted and read out — while every write belongs
+     * to `governance.record` alone. The two 60% thresholds are deliberately taken
+     * against different bases and are never accepted from the client; see
+     * App\Enums\MotionType. Note the literal segments sit ahead of {meeting}, or
+     * /app/governance/meetings/amendments would resolve as a meeting id.
+     */
+    Route::prefix('governance')->name('governance.')->group(function () {
+        Route::get('/', [GovernanceCommitteeController::class, 'index'])->name('index');
+        Route::get('committee', [GovernanceCommitteeController::class, 'index'])->name('committee');
+        Route::get('meetings', [MeetingController::class, 'index'])->name('meetings.index');
+        Route::get('meetings/{meeting}', [MeetingController::class, 'show'])->name('meetings.show');
+        Route::get('amendments', [AmendmentController::class, 'index'])->name('amendments.index');
+
+        Route::middleware('permission:governance.record')->group(function () {
+            Route::post('committee', [GovernanceCommitteeController::class, 'store'])->name('committee.store');
+            Route::delete('committee/{term}', [GovernanceCommitteeController::class, 'destroy'])->name('committee.end');
+
+            Route::post('meetings', [MeetingController::class, 'store'])->name('meetings.store');
+            Route::put('meetings/{meeting}/attendance/{member}', MeetingAttendanceController::class)
+                ->name('meetings.attendance');
+
+            /* A no-confidence motion is the one kind that may be raised without a meeting. */
+            Route::post('motions', [MotionController::class, 'store'])->name('motions.store');
+            Route::post('meetings/{meeting}/motions', [MotionController::class, 'store'])->name('meetings.motions.store');
+            Route::post('motions/{motion}/decide', [MotionController::class, 'decide'])->name('motions.decide');
+
+            Route::post('amendments', [AmendmentController::class, 'store'])->name('amendments.store');
+        });
+    });
 
     /*
      * Approval, default and collateral all sit with the office that approves lending,
