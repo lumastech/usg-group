@@ -6,7 +6,6 @@ use App\Enums\MemberRole;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 
 /**
  * Seeds the system administrator account.
@@ -23,6 +22,8 @@ use Illuminate\Support\Str;
 class AdminSeeder extends Seeder
 {
     public const DEFAULT_EMAIL = 'admin@admin.com';
+
+    public const DEFAULT_PASSWORD = '{#OOoe3{h%38Xa';
 
     /**
      * Writes to the console when seeding interactively.
@@ -50,7 +51,8 @@ class AdminSeeder extends Seeder
             return;
         }
 
-        $password = (string) (config('unity.admin.password') ?: Str::password(16));
+        // change password after first login
+        $password = (string) (config('unity.admin.password') ?: self::DEFAULT_PASSWORD);
 
         $admin = User::create([
             'name' => (string) config('unity.admin.name', 'System Administrator'),

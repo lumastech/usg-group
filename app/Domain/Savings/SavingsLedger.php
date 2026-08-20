@@ -3,9 +3,12 @@
 namespace App\Domain\Savings;
 
 use App\Domain\Support\MoneyMutator;
+use App\Enums\MemberStatus;
 use App\Enums\SavingsTransactionType;
 use App\Enums\TransactionSource;
 use App\Exceptions\InvalidSavingsAmountException;
+use App\Exceptions\LockdownSavingsCapException;
+use App\Exceptions\MemberNotActiveException;
 use App\Models\CycleMonth;
 use App\Models\Member;
 use App\Models\SavingsTransaction;
@@ -57,9 +60,15 @@ class SavingsLedger
     /**
      * Throws unless the amount satisfies the minimum, the K500 increment and, in the
      * lockdown months, the monthly cap.
+     *
+     * The cap applies to everything the member saves in the month, not to the single
+     * deposit in hand, so two K500 payments in September are refused just as one
+     * K1,000 payment is.
      */
     public function assertValidContribution(Member $member, CycleMonth $month, Money $amount): void
     {
+        $this->assertMemberMaySave($member);
+
         $cycle = $month->cycle;
         $ngwee = Kwacha::toNgwee($amount);
         $minimum = Kwacha::toNgwee($cycle->min_savings_ngwee);
@@ -79,11 +88,45 @@ class SavingsLedger
 
         $cap = $cycle->savingsCapForMonth($month->sequence);
 
-        if ($cap !== null && $ngwee > Kwacha::toNgwee($cap)) {
-            throw new InvalidSavingsAmountException(
-                'From September to the end of the cycle savings are capped at '.Kwacha::format($cap).' a month.'
+        if ($cap === null) {
+            return;
+        }
+
+        $capNgwee = Kwacha::toNgwee($cap);
+        $alreadySaved = Kwacha::toNgwee($this->savedInMonth($member, $month));
+
+        if ($alreadySaved + $ngwee > $capNgwee) {
+            throw new LockdownSavingsCapException(
+                $alreadySaved > 0
+                    ? Kwacha::format($alreadySaved).' is already recorded for '.$month->label()
+                        .', and from September to the end of the cycle savings are capped at '
+                        .Kwacha::format($cap).' a month.'
+                    : 'From September to the end of the cycle savings are capped at '
+                        .Kwacha::format($cap).' a month.'
             );
         }
+    }
+
+    /** Only members still in the group may add to their savings. */
+    public function assertMemberMaySave(Member $member): void
+    {
+        if ($member->status !== MemberStatus::Active) {
+            throw new MemberNotActiveException(
+                "{$member->full_name} is {$member->status->label()} and can no longer save into this cycle."
+            );
+        }
+    }
+
+    /** What the member has already contributed in one month. */
+    public function savedInMonth(Member $member, CycleMonth $month): Money
+    {
+        $total = SavingsTransaction::query()
+            ->where('member_id', $member->id)
+            ->where('cycle_month_id', $month->id)
+            ->where('type', SavingsTransactionType::Contribution->value)
+            ->sum('amount_ngwee');
+
+        return Kwacha::ofNgwee((int) $total);
     }
 
     /** Total contributed by a member across the whole cycle up to and including a month. */

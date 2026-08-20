@@ -2,35 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use App\Domain\Reporting\CycleOverview;
-use App\Enums\CycleStatus;
-use App\Models\Cycle;
+use App\Enums\MemberRole;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
-use Inertia\Inertia;
-use Inertia\Response;
 
+/**
+ * The post-login entry point.
+ *
+ * There is no dashboard of its own here: the portal has exactly two landing pages,
+ * /app for the committee and /my for everyone else. This route exists so that a
+ * single well-known URL — the one Fortify redirects to after login — sends each
+ * user to the portal they actually work in.
+ */
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request, CycleOverview $overview): Response
+    public function __invoke(Request $request): RedirectResponse
     {
-        $cycle = Cycle::query()
-            ->whereIn('status', [CycleStatus::Active, CycleStatus::Closing])
-            ->latest('starts_on')
-            ->first() ?? Cycle::latest('starts_on')->first();
+        $committee = array_map(
+            fn (MemberRole $role): string => $role->value,
+            array_filter(MemberRole::cases(), fn (MemberRole $role): bool => $role->isCommittee()),
+        );
 
-        if ($cycle === null) {
-            return Inertia::render('Dashboard', ['overview' => null, 'membersMissingSavings' => []]);
-        }
-
-        $today = Carbon::today();
-        $month = $overview->currentMonth($cycle, $today);
-
-        return Inertia::render('Dashboard', [
-            'overview' => $overview->for($cycle, $today),
-            'membersMissingSavings' => Inertia::defer(
-                fn (): array => $overview->membersMissingSavings($cycle, $month)
-            ),
-        ]);
+        return redirect()->route(
+            $request->user()->hasAnyRole($committee) ? 'app.dashboard' : 'my.dashboard'
+        );
     }
 }

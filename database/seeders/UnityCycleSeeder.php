@@ -6,9 +6,11 @@ use App\Domain\Cycles\CycleMonthPlanner;
 use App\Enums\CycleStatus;
 use App\Enums\MemberRole;
 use App\Enums\MemberStatus;
+use App\Enums\NextOfKinRelationship;
 use App\Enums\WeekendTradingPolicy;
 use App\Models\Cycle;
 use App\Models\Member;
+use App\Models\NextOfKin;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -65,7 +67,19 @@ class UnityCycleSeeder extends Seeder
             ],
         );
 
-        Member::updateOrCreate(
+        $nextOfKin = [
+            'name' => $attributes['next_of_kin_name'] ?? null,
+            'phone' => $attributes['next_of_kin_phone'] ?? null,
+            'relationship' => $attributes['next_of_kin_relationship'] ?? null,
+        ];
+
+        unset(
+            $attributes['next_of_kin_name'],
+            $attributes['next_of_kin_phone'],
+            $attributes['next_of_kin_relationship'],
+        );
+
+        $member = Member::updateOrCreate(
             ['cycle_id' => $cycle->id, 'member_number' => $number],
             $attributes + [
                 'user_id' => $user->id,
@@ -78,7 +92,30 @@ class UnityCycleSeeder extends Seeder
             ],
         );
 
+        $this->seedNextOfKin($member, $nextOfKin);
+
         $user->syncRoles([MemberRole::Member->value]);
+    }
+
+    /**
+     * The sheet records one nominee per member, and two members named none at all.
+     *
+     * @param  array{name: string|null, phone: string|null, relationship: string|null}  $nextOfKin
+     */
+    protected function seedNextOfKin(Member $member, array $nextOfKin): void
+    {
+        if ($nextOfKin['name'] === null) {
+            return;
+        }
+
+        NextOfKin::updateOrCreate(
+            ['member_id' => $member->id, 'name' => $nextOfKin['name']],
+            [
+                'phone' => $nextOfKin['phone'],
+                'relationship' => NextOfKinRelationship::fromLabel($nextOfKin['relationship']),
+                'relationship_label' => $nextOfKin['relationship'],
+            ],
+        );
     }
 
     /** Committee as recorded in section 4 of the constitution. */

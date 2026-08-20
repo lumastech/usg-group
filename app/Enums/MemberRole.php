@@ -2,14 +2,20 @@
 
 namespace App\Enums;
 
+/**
+ * The roles a portal user may hold.
+ *
+ * Roles are only bundles of permissions; authorisation always checks a permission,
+ * never a role. See App\Enums\Permission for the permissions each role receives.
+ */
 enum MemberRole: string
 {
-    case Member = 'Member';
-    case Treasurer = 'Treasurer';
-    case ViceTreasurer = 'Vice-Treasurer';
-    case Chairperson = 'Chairperson';
-    case ViceChairperson = 'Vice-Chairperson';
-    case Admin = 'Admin';
+    case Member = 'member';
+    case Treasurer = 'treasurer';
+    case ViceTreasurer = 'vice_treasurer';
+    case Chairperson = 'chairperson';
+    case ViceChairperson = 'vice_chairperson';
+    case Admin = 'admin';
 
     /**
      * Roles whose holders may act as one of the two required approvers.
@@ -25,5 +31,68 @@ enum MemberRole: string
     public static function values(): array
     {
         return array_map(fn (self $role): string => $role->value, self::cases());
+    }
+
+    /** Human-readable office name, for display in the portal. */
+    public function label(): string
+    {
+        return match ($this) {
+            self::Member => 'Member',
+            self::Treasurer => 'Treasurer',
+            self::ViceTreasurer => 'Vice-Treasurer',
+            self::Chairperson => 'Chairperson',
+            self::ViceChairperson => 'Vice-Chairperson',
+            self::Admin => 'Administrator',
+        };
+    }
+
+    /** Whether holders of this role sit on the committee, admins included. */
+    public function isCommittee(): bool
+    {
+        return $this === self::Admin || in_array($this, self::committee(), true);
+    }
+
+    /**
+     * The permissions granted to this role.
+     *
+     * @return array<int, Permission>
+     */
+    public function permissions(): array
+    {
+        return match ($this) {
+            self::Admin => Permission::cases(),
+
+            self::Chairperson, self::ViceChairperson => [
+                Permission::MembersManage,
+                Permission::MembersView,
+                Permission::LoansView,
+                Permission::LoansApprove,
+                Permission::FundApproveOutflow,
+                Permission::PayoutsApprove,
+                Permission::GovernanceRecord,
+                Permission::ReportsView,
+                Permission::SavingsView,
+                Permission::DeclarationsView,
+                Permission::DeclarationsSubmitOwn,
+            ],
+
+            self::Treasurer, self::ViceTreasurer => [
+                Permission::MembersView,
+                Permission::LoansView,
+                Permission::LoansDisburse,
+                Permission::LoansRecordRepayment,
+                Permission::FundApproveOutflow,
+                Permission::PayoutsExecute,
+                Permission::SavingsView,
+                Permission::SavingsRecord,
+                Permission::DeclarationsView,
+                Permission::DeclarationsSubmitOwn,
+                Permission::ReportsView,
+            ],
+
+            self::Member => [
+                Permission::DeclarationsSubmitOwn,
+            ],
+        };
     }
 }

@@ -2,7 +2,13 @@
 
 namespace App\Providers;
 
+use App\Domain\Cycles\CurrentCycle;
+use App\Domain\Loans\MonthlyInterestIncome;
+use App\Domain\Loans\NoInterestIncome;
+use App\Domain\Loans\NoOutstandingLoans;
+use App\Domain\Loans\OutstandingLoanProvider;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -15,7 +21,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(CurrentCycle::class);
+
+        // Replaced by the lending engine in module 3; until then nobody owes anything.
+        $this->app->bind(OutstandingLoanProvider::class, NoOutstandingLoans::class);
+        $this->app->bind(MonthlyInterestIncome::class, NoInterestIncome::class);
     }
 
     /**
@@ -32,6 +42,10 @@ class AppServiceProvider extends ServiceProvider
     protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
+
+        // Inertia pages read props directly, so a single resource is not wrapped in
+        // "data". Paginated collections keep their data/meta envelope regardless.
+        JsonResource::withoutWrapping();
 
         DB::prohibitDestructiveCommands(
             app()->isProduction(),

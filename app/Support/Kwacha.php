@@ -33,11 +33,18 @@ final class Kwacha
         return $money->getMinorAmount()->toInt();
     }
 
-    /** Renders as "K1,500.00", the format used across statements and exports. */
+    /**
+     * Renders as "K1,500.00", the format used across statements and exports.
+     *
+     * A negative amount reads "-K1,500.00", with the sign outside the symbol, matching
+     * formatMoney() in the frontend — a member under water must look the same on the
+     * screen and on the PDF they are handed.
+     */
     public static function format(Money|int $amount): string
     {
         $money = $amount instanceof Money ? $amount : self::ofNgwee($amount);
+        $value = $money->getAmount()->toFloat();
 
-        return 'K'.number_format($money->getAmount()->toFloat(), 2);
+        return ($value < 0 ? '-' : '').'K'.number_format(abs($value), 2);
     }
 }

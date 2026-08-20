@@ -3,12 +3,16 @@
 namespace App\Domain\Members;
 
 use App\Enums\MemberStatus;
+use App\Enums\NextOfKinRelationship;
+use App\Exceptions\JoiningFeeBelowMinimumException;
 use App\Exceptions\RegistrationClosedException;
 use App\Models\Cycle;
 use App\Models\Member;
+use App\Support\Kwacha;
 use Brick\Money\Money;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Registers members into a cycle, enforcing the constitution's joining rules.
@@ -21,7 +25,8 @@ class MembershipRegistrar
     public const LATE_REGISTRATION_MONTH = 3;
 
     /**
-     * @param  array<string, mixed>  $attributes
+     * @param  array<string, mixed>  $attributes  Member columns, optionally with a
+     *                                            `next_of_kin` list of nominee rows.
      */
     public function register(Cycle $cycle, array $attributes, ?CarbonInterface $joinedOn = null): Member
     {
@@ -34,14 +39,65 @@ class MembershipRegistrar
             );
         }
 
-        return Member::create($attributes + [
-            'cycle_id' => $cycle->id,
-            'member_number' => $this->nextMemberNumber($cycle),
-            'joined_on' => $joinedOn,
-            'joining_month_sequence' => $sequence,
-            'joining_fee_ngwee' => $this->joiningFeeFor($cycle, $sequence),
-            'status' => MemberStatus::Active,
-        ]);
+        $minimum = $this->joiningFeeFor($cycle, $sequence);
+        $paid = $this->paidAmount($attributes, $minimum);
+
+        if ($paid->isLessThan($minimum)) {
+            throw new JoiningFeeBelowMinimumException(sprintf(
+                'The joining fee for month %d of the cycle is at least %s.',
+                $sequence,
+                Kwacha::format($minimum),
+            ));
+        }
+
+        $nextOfKin = $attributes['next_of_kin'] ?? [];
+        unset($attributes['next_of_kin'], $attributes['joining_fee_ngwee']);
+
+        return DB::transaction(function () use ($cycle, $attributes, $joinedOn, $sequence, $paid, $nextOfKin): Member {
+            $member = Member::create($attributes + [
+                'cycle_id' => $cycle->id,
+                'member_number' => $this->nextMemberNumber($cycle),
+                'joined_on' => $joinedOn,
+                'joining_month_sequence' => $sequence,
+                'joining_fee_ngwee' => $paid,
+                'status' => MemberStatus::Active,
+                'status_changed_at' => Carbon::now(),
+            ]);
+
+            $this->syncNextOfKin($member, $nextOfKin);
+
+            return $member;
+        });
+    }
+
+    /**
+     * Replace a member's nominees with the given rows.
+     *
+     * Nominees are rewritten wholesale rather than diffed: the form is a repeater,
+     * so what was submitted is the complete list the member wants on record.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    public function syncNextOfKin(Member $member, array $rows): void
+    {
+        DB::transaction(function () use ($member, $rows): void {
+            $member->nextOfKin()->delete();
+
+            foreach ($rows as $row) {
+                if (blank($row['name'] ?? null)) {
+                    continue;
+                }
+
+                $label = $row['relationship_label'] ?? null;
+
+                $member->nextOfKin()->create([
+                    'name' => $row['name'],
+                    'phone' => $row['phone'] ?? null,
+                    'relationship' => $this->relationship($row),
+                    'relationship_label' => $label,
+                ]);
+            }
+        });
     }
 
     /** The standard fee, or the late registration fee from the third month onward. */
@@ -58,6 +114,35 @@ class MembershipRegistrar
         $start = $cycle->starts_on->copy()->startOfMonth();
 
         return (int) $start->diffInMonths($date->copy()->startOfMonth()) + 1;
+    }
+
+    /**
+     * What the member actually paid, defaulting to the minimum for their tier.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    protected function paidAmount(array $attributes, Money $minimum): Money
+    {
+        $paid = $attributes['joining_fee_ngwee'] ?? null;
+
+        return match (true) {
+            $paid instanceof Money => $paid,
+            is_int($paid) => Kwacha::ofNgwee($paid),
+            default => $minimum,
+        };
+    }
+
+    /** @param  array<string, mixed>  $row */
+    protected function relationship(array $row): NextOfKinRelationship
+    {
+        $relationship = $row['relationship'] ?? null;
+
+        return match (true) {
+            $relationship instanceof NextOfKinRelationship => $relationship,
+            is_string($relationship) => NextOfKinRelationship::tryFrom($relationship)
+                ?? NextOfKinRelationship::fromLabel($relationship),
+            default => NextOfKinRelationship::Other,
+        };
     }
 
     protected function nextMemberNumber(Cycle $cycle): int

@@ -4,5 +4,13 @@ Before planning or editing, find the row whose globs match the file's path and r
 
 | Applies to | Rule file |
 | --- | --- |
+| app/Http/Controllers/** | .ai/rules/controllers.md |
 | app/Domain/** | .ai/rules/domain.md |
+| app/Domain/Loans/** | .ai/rules/loans.md |
+| app/Domain/Members/** | .ai/rules/members.md |
 | app/Models/** | .ai/rules/models.md |
+| app/Http/Resources/** | .ai/rules/resources.md |
+| resources/js/routes/** | .ai/rules/routes.md |
+| app/Domain/Savings/** | .ai/rules/savings.md |
+| database/seeders/** | .ai/rules/seeders.md |
+| resources/js/components/unity/** | .ai/rules/unity.md |

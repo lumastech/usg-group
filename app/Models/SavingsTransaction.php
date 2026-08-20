@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\MoneyCast;
 use App\Enums\SavingsTransactionType;
 use App\Enums\TransactionSource;
+use App\Exceptions\ImmutableLedgerException;
 use Brick\Money\Money;
 use Database\Factories\SavingsTransactionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -36,6 +37,28 @@ class SavingsTransaction extends Model
 {
     /** @use HasFactory<SavingsTransactionFactory> */
     use HasFactory, LogsActivity;
+
+    /**
+     * The ledger is append-only.
+     *
+     * A posted entry is a statement of what was recorded at the time, so it can never
+     * be edited or deleted. Corrections are made by posting a reversing Adjustment,
+     * which leaves both the original and the correction visible on the statement.
+     */
+    protected static function booted(): void
+    {
+        static::updating(function (self $transaction): void {
+            throw new ImmutableLedgerException(
+                'Savings entries cannot be edited. Post a reversing adjustment instead.'
+            );
+        });
+
+        static::deleting(function (self $transaction): void {
+            throw new ImmutableLedgerException(
+                'Savings entries cannot be deleted. Post a reversing adjustment instead.'
+            );
+        });
+    }
 
     /** @return BelongsTo<Member, $this> */
     public function member(): BelongsTo

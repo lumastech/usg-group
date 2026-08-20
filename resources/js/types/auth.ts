@@ -1,17 +1,90 @@
+import type { CycleMonthStatus, CycleStatus } from './enums';
+
+/**
+ * The signed-in user, as shared by HandleInertiaRequests on every page.
+ *
+ * `permissions` is flattened from the user's roles and drives what the UI offers.
+ * It is a rendering hint only — the backend re-checks every action.
+ */
 export type User = {
     id: number;
     name: string;
     email: string;
-    avatar?: string;
+    avatar?: string | null;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
-    created_at: string;
-    updated_at: string;
+    member_id: number | null;
+    member_number: number | null;
+    roles: MemberRoleName[];
+    permissions: PermissionName[];
     [key: string]: unknown;
 };
 
 export type Auth = {
-    user: User;
+    user: User | null;
+};
+
+/** Mirrors App\Enums\MemberRole. */
+export type MemberRoleName =
+    | 'member'
+    | 'treasurer'
+    | 'vice_treasurer'
+    | 'chairperson'
+    | 'vice_chairperson'
+    | 'admin';
+
+/** Mirrors App\Enums\Permission. */
+export type PermissionName =
+    | 'members.view'
+    | 'members.manage'
+    | 'savings.view'
+    | 'savings.record'
+    | 'declarations.view'
+    | 'declarations.submit-own'
+    | 'loans.view'
+    | 'loans.approve'
+    | 'loans.disburse'
+    | 'loans.record-repayment'
+    | 'fund.approve-outflow'
+    | 'payouts.approve'
+    | 'payouts.execute'
+    | 'governance.record'
+    | 'reports.view'
+    | 'cycles.manage';
+
+/** Where in the month we are. Drives the dashboard banner and form availability. */
+export type CycleWindow =
+    'before_declarations' | 'declarations' | 'between' | 'trading' | 'closed';
+
+export type CurrentCycleMonth = {
+    id: number;
+    sequence: number;
+    label: string;
+    status: CycleMonthStatus;
+    declarations_open_at: string;
+    declarations_close_at: string;
+    trading_starts_on: string;
+    trading_concludes_on: string;
+    disbursement_on: string;
+    declarations_open: boolean;
+    trading_open: boolean;
+    window: CycleWindow;
+};
+
+/** All money fields are integer ngwee. Format with formatMoney(). */
+export type CurrentCycle = {
+    id: number;
+    name: string;
+    status: CycleStatus;
+    starts_on: string;
+    ends_on: string;
+    final_repayment_date: string;
+    days_to_final_repayment: number;
+    min_savings_ngwee: number;
+    savings_increment_ngwee: number;
+    lockdown_savings_cap_ngwee: number;
+    is_lockdown: boolean;
+    month: CurrentCycleMonth | null;
 };
 
 export type Passkey = {

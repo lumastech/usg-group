@@ -3,9 +3,13 @@
 use App\Domain\Cycles\CycleMonthPlanner;
 use App\Domain\Savings\SavingsLedger;
 use App\Enums\SavingsTransactionType;
+use App\Exceptions\ImmutableLedgerException;
 use App\Exceptions\InvalidSavingsAmountException;
+use App\Exceptions\LockdownSavingsCapException;
+use App\Exceptions\MemberNotActiveException;
 use App\Models\Cycle;
 use App\Models\Member;
+use App\Models\SavingsTransaction;
 use App\Support\Kwacha;
 use Spatie\Activitylog\Models\Activity;
 
@@ -107,4 +111,89 @@ it('writes an activity log entry naming the member who recorded it', function ()
     expect($activity)->not->toBeNull()
         ->and($activity->description)->toContain('K500.00')
         ->and($activity->properties['actor_member_id'])->toBe($this->treasurer->id);
+});
+
+it('counts the whole month against the lockdown cap, not each deposit', function () {
+    $this->ledger->record($this->member, $this->september, Kwacha::of(500), $this->treasurer);
+
+    $this->ledger->record($this->member, $this->september, Kwacha::of(500), $this->treasurer);
+})->throws(LockdownSavingsCapException::class, 'K500.00 is already recorded for September 2026');
+
+it('lets a member save the full cap in one deposit during lockdown', function () {
+    $transaction = $this->ledger->record($this->member, $this->september, Kwacha::of(500), $this->treasurer);
+
+    expect(Kwacha::format($this->ledger->savedInMonth($this->member, $this->september)))->toBe('K500.00')
+        ->and($transaction->exists)->toBeTrue();
+});
+
+it('caps each lockdown month separately', function () {
+    $october = $this->months->firstWhere('sequence', 11);
+
+    $this->ledger->record($this->member, $this->september, Kwacha::of(500), $this->treasurer);
+    $this->ledger->record($this->member, $october, Kwacha::of(500), $this->treasurer);
+
+    expect(Kwacha::format($this->ledger->savedInMonth($this->member, $october)))->toBe('K500.00');
+});
+
+it('does not count another members savings against this members cap', function () {
+    $other = Member::factory()->for($this->cycle)->create();
+
+    $this->ledger->record($other, $this->september, Kwacha::of(500), $this->treasurer);
+    $transaction = $this->ledger->record($this->member, $this->september, Kwacha::of(500), $this->treasurer);
+
+    expect($transaction->exists)->toBeTrue();
+});
+
+it('accepts several deposits in a month outside the lockdown', function () {
+    $this->ledger->record($this->member, $this->december, Kwacha::of(2000), $this->treasurer);
+    $this->ledger->record($this->member, $this->december, Kwacha::of(1500), $this->treasurer);
+
+    expect(Kwacha::format($this->ledger->savedInMonth($this->member, $this->december)))->toBe('K3,500.00');
+});
+
+it('refuses a contribution from a member who is no longer active', function (string $state) {
+    $member = Member::factory()->for($this->cycle)->{$state}()->create();
+
+    $this->ledger->record($member, $this->december, Kwacha::of(500), $this->treasurer);
+})->with(['leftEarly', 'expelled', 'deceased'])->throws(MemberNotActiveException::class);
+
+it('still allows an adjustment against a member who has left', function () {
+    $member = Member::factory()->for($this->cycle)->leftEarly()->create();
+
+    $transaction = $this->ledger->record(
+        $member,
+        $this->december,
+        Kwacha::of(500)->negated(),
+        $this->treasurer,
+        SavingsTransactionType::Adjustment,
+    );
+
+    expect($transaction->exists)->toBeTrue();
+});
+
+it('refuses to edit a posted entry', function () {
+    $transaction = $this->ledger->record($this->member, $this->december, Kwacha::of(500), $this->treasurer);
+
+    $transaction->update(['amount_ngwee' => Kwacha::of(1000)]);
+})->throws(ImmutableLedgerException::class, 'reversing adjustment');
+
+it('refuses to delete a posted entry', function () {
+    $transaction = $this->ledger->record($this->member, $this->december, Kwacha::of(500), $this->treasurer);
+
+    $transaction->delete();
+})->throws(ImmutableLedgerException::class, 'reversing adjustment');
+
+it('corrects a mistake with a reversing adjustment, leaving both entries on the ledger', function () {
+    $this->ledger->record($this->member, $this->december, Kwacha::of(1500), $this->treasurer);
+
+    $this->ledger->record(
+        $this->member,
+        $this->december,
+        Kwacha::of(1000)->negated(),
+        $this->treasurer,
+        SavingsTransactionType::Adjustment,
+    );
+
+    expect(Kwacha::format($this->ledger->cumulativeSavings($this->member, $this->december)))->toBe('K500.00')
+        ->and(SavingsTransaction::where('member_id', $this->member->id)->count())->toBe(2);
 });

@@ -4,12 +4,12 @@ namespace App\Models;
 
 use App\Enums\CycleMonthStatus;
 use App\Enums\InterestAllocationMethod;
+use App\Models\Concerns\BelongsToCycle;
 use Carbon\CarbonInterface;
 use Database\Factories\CycleMonthFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
@@ -35,13 +35,7 @@ use Illuminate\Support\Carbon;
 class CycleMonth extends Model
 {
     /** @use HasFactory<CycleMonthFactory> */
-    use HasFactory;
-
-    /** @return BelongsTo<Cycle, $this> */
-    public function cycle(): BelongsTo
-    {
-        return $this->belongsTo(Cycle::class);
-    }
+    use BelongsToCycle, HasFactory;
 
     /** Declarations are only accepted between the 1st at 08:00 and the end of the 3rd. */
     public function declarationsOpenAt(?CarbonInterface $at = null): bool

@@ -1,6 +1,54 @@
 <laravel-boost-guidelines>
 === foundation rules ===
 
+## PROMPT 0 — PROJECT KICKOFF, CONVENTIONS & UI FOUNDATION
+
+You are building the Unity Savings Group Management System, a Laravel app for a Zambian village-banking group (~30 members) running a Dec 2025 – Nov 2026 savings/lending cycle. We build module by module; I paste one module spec at a time. Set up the project and the UI foundation now; all later modules must follow these conventions.
+
+**Stack:**
+- Laravel 13, PHP 8, MySQL
+- Inertia.js + Vue 3 (Composition API, `<script setup>`) + TypeScript
+- Tailwind CSS v4, Vite. NO component framework clone-outs — custom-designed components (I care about a distinctive dashboard design, not a Bootstrap/Filament look)
+- Auth: Laravel Breeze (Inertia/Vue variant) as the base, then customized
+- spatie/laravel-permission, spatie/laravel-activitylog, maatwebsite/excel, barryvdh/laravel-dompdf, Pest + vitest for Vue component tests
+- Timezone `Africa/Lusaka`, currency ZMW
+
+**Money & domain conventions — non-negotiable:**
+- All money as integer ngwee (K1 = 100). `Money` Eloquent cast; a shared TS `formatMoney(ngwee): "K1,500.00"` util; API/Inertia props always send ngwee integers, formatting happens in Vue.
+- Every financial mutation goes through a Domain Service in `app/Domain/{Module}/`, in a DB transaction, activity-logged. Business rules never live in controllers or Vue.
+- Immutable ledgers: corrections are reversing entries, never edits/deletes.
+- All records scoped to `cycle_id`; global scope + current-cycle resolver.
+- Native PHP backed enums in `app/Enums/`; mirror them to TS via a generated `resources/js/types/enums.ts` (write an artisan command `unity:generate-ts-enums`).
+
+**ROLE-AWARE UI ARCHITECTURE (the core of this prompt — build it properly once):**
+1. Roles: `admin`, `chairperson`, `vice_chairperson`, `treasurer`, `vice_treasurer`, `member`. Granular permissions (e.g. `loans.approve`, `loans.disburse`, `payouts.execute`, `members.manage`, `fund.approve-outflow`, `governance.record`, `reports.view`, `declarations.submit-own`) assigned to roles in a seeder — permissions are the currency, roles are just bundles.
+2. Backend is the source of truth: every route/action guarded by policies + permission middleware. Frontend awareness is UX only, never security.
+3. `HandleInertiaRequests::share()` exposes `auth.user` (id, name, member_id, roles[], permissions[]) and `currentCycle` (id, name, status, key dates, lockdown flag, current trading window state) on every page.
+4. Frontend helpers:
+   - `usePermissions()` composable: `can('loans.approve')`, `hasRole('treasurer')`, `isCommittee()`.
+   - `<Can permission="loans.approve">…</Can>` wrapper component (and `<Can :any="[...]">`).
+   - Navigation is data-driven: a single `navigation.ts` config where each item declares required permissions; the sidebar renders only what the user can access. Same config drives a mobile bottom-nav for the member portal.
+5. Two layouts, one app:
+   - `AdminLayout.vue` — sidebar + topbar dashboard shell for committee/admin (desktop-first, but responsive).
+   - `MemberLayout.vue` — mobile-first shell (bottom nav, large touch targets) for regular members: most members use phones.
+   - Route groups: `/app/*` (committee, permission-gated per section) and `/my/*` (member self-service). A committee member who is also a member can switch between the two via a context switcher in the topbar.
+6. Server-driven UI state pattern: pages receive an `abilities` prop per resource (e.g. a loan detail page gets `abilities: {approve: bool, disburse: bool, markDefault: bool}` computed from policies) so buttons render/disable from real policy results, not duplicated frontend logic.
+
+**DESIGN SYSTEM (build now, reuse everywhere):**
+- Design direction: clean fintech dashboard, distinctive not generic — pick a confident accent palette (suggest deep green + warm gold, evoking Zambian colors, on a near-white surface with a dark sidebar), Inter or similar for UI, tabular figures for money. Dark sidebar + light content. Show me a style tile (colors, type scale, spacing) as a demo page `/app/styleguide` before building components.
+- Core components in `resources/js/Components/ui/`: `AppButton`, `AppCard`, `StatCard` (label, value, trend, icon), `DataTable` (TS generic: server-side pagination/sort/filter via Inertia partial reloads, column slots, row actions gated by abilities, CSV export hook), `MatrixTable` (sticky first column + sticky header, horizontal scroll — this powers all the workbook-style month-matrix screens), `Modal`, `ConfirmDialog` (with a `dual-approval` variant that captures a second user's credentials — see two-person rule), `FormField` wrappers with server-side validation error display, `MoneyInput` (formats K display, emits ngwee int, enforces step increments via prop), `StatusBadge` (enum-driven colors), `Stepper` (wizards), `EmptyState`, `Toast`.
+- `MoneyInput` must support `:step="50000"` (K500 in ngwee) and min/max — savings and loan forms depend on it.
+- Vitest tests for `MoneyInput` (increment enforcement, ngwee emission) and `DataTable` (ability-gated actions render/hide).
+
+**Cycle mechanics (backend):**
+- `cycles` table: name, start_date, end_date, declaration_open_day (1, opens 08:00), declaration_close_day (3), trading_start_day (4), trading_end_day (7), loan_lockdown_from (2026-09-01), savings_cap_during_lockdown (K500), final_repayment_deadline (2026-11-07), weekend_policy enum (`friday_before | monday_after`, default monday_after), status (`Planned | Active | ShareOut | Closed`).
+- `WeekendAdjustmentPolicy` service with unit tests incl. month boundaries.
+- Seed the Active 2025–26 cycle.
+
+**Do now:** scaffold everything above, build the styleguide page and core components, seed roles/permissions and the cycle, write `docs/CONVENTIONS.md` (including the role-aware UI pattern) — then STOP and show me the styleguide before any module work.
+
+---
+
 # Laravel Boost Guidelines
 
 The Laravel Boost guidelines are specifically curated by Laravel maintainers for this application. These guidelines should be followed closely to ensure the best experience when building Laravel applications.

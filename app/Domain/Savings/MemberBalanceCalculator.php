@@ -2,6 +2,7 @@
 
 namespace App\Domain\Savings;
 
+use App\Domain\Loans\OutstandingLoanProvider;
 use App\Models\CycleMonth;
 use App\Models\InterestAllocation;
 use App\Models\Member;
@@ -13,12 +14,17 @@ use Illuminate\Support\Collection;
 /**
  * Rebuilds the per-member month-end snapshots.
  *
- * Loan figures are filled in by the loans engine; until a member has borrowed they
- * stay at zero, which leaves net value equal to savings plus interest.
+ * Every column is derived, so a rebuild is idempotent: running it twice over the same
+ * ledgers produces the same rows. The loan figures come from the OutstandingLoanProvider
+ * rather than from the row being rebuilt, which is what keeps that true — reading them
+ * back off the snapshot would let a stale value survive a rebuild forever.
  */
 class MemberBalanceCalculator
 {
-    public function __construct(protected SavingsLedger $ledger) {}
+    public function __construct(
+        protected SavingsLedger $ledger,
+        protected OutstandingLoanProvider $loans,
+    ) {}
 
     /**
      * @return Collection<int, MemberMonthBalance>
@@ -55,10 +61,10 @@ class MemberBalanceCalculator
             'cycle_month_id' => $month->id,
         ]);
 
-        $loanBalance = $existing->getRawOriginal('loan_balance_ngwee') ?? 0;
-        $socialLoanBalance = $existing->getRawOriginal('social_loan_balance_ngwee') ?? 0;
-        $interestPaid = $existing->getRawOriginal('cumulative_interest_paid_ngwee') ?? 0;
-        $borrowedToDate = $existing->getRawOriginal('borrowed_to_date_ngwee') ?? 0;
+        $loanBalance = Kwacha::toNgwee($this->loans->balanceFor($member, $month));
+        $socialLoanBalance = Kwacha::toNgwee($this->loans->socialFundBalanceFor($member, $month));
+        $interestPaid = Kwacha::toNgwee($this->loans->interestPaidTo($member, $month));
+        $borrowedToDate = Kwacha::toNgwee($this->loans->borrowedToDate($member, $month));
 
         $memberValue = $cumulativeSavings + $cumulativeInterest;
         $twoTimesSavings = $cumulativeSavings * $month->cycle->max_loan_multiple;

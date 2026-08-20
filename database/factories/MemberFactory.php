@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Enums\MemberStatus;
 use App\Models\Cycle;
 use App\Models\Member;
+use App\Models\NextOfKin;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Carbon;
 
@@ -24,9 +25,6 @@ class MemberFactory extends Factory
             'nrc_number' => fake()->unique()->numerify('######/##/#'),
             'physical_address' => fake()->address(),
             'phone' => fake()->numerify('09########'),
-            'next_of_kin_name' => fake()->name(),
-            'next_of_kin_phone' => fake()->numerify('09########'),
-            'next_of_kin_relationship' => fake()->randomElement(['Spouse', 'Sister', 'Mother', 'Daughter']),
             'is_diaspora' => false,
             'status' => MemberStatus::Active,
             'joined_on' => Carbon::parse('2025-12-01'),
@@ -34,6 +32,12 @@ class MemberFactory extends Factory
             'joining_fee_ngwee' => 100_000,
             'joining_fee_paid' => true,
         ];
+    }
+
+    /** Give the member a nominated next of kin, as the registration form requires. */
+    public function withNextOfKin(int $count = 1): static
+    {
+        return $this->has(NextOfKin::factory()->count($count), 'nextOfKin');
     }
 
     public function diaspora(): static

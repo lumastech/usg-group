@@ -1,0 +1,13 @@
+---
+paths:
+  - 'app/Domain/Members/**'
+---
+
+# Members
+
+## Membership registration is a window, not a permission
+Registration closes after month 3 of the cycle (Cycle::registrationOpenForMonth) and the constitution allows no override — MemberPolicy::create returns false for admins too, so there is no "force" path to add one.
+
+Anyone joining in month 3 pays the late fee (K2,000 vs K1,000). MembershipRegistrar::register validates the amount actually paid against that tier and throws JoiningFeeBelowMinimumException; it never silently substitutes the minimum.
+
+unity:import-members deliberately registers everyone on the commitment sheet as joining on the cycle's first day, whatever date the import is run — importing in month 5 must not charge the founding signatories the late fee.
