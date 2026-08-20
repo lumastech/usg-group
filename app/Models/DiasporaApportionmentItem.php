@@ -4,9 +4,11 @@ namespace App\Models;
 
 use App\Casts\MoneyCast;
 use App\Enums\ApportionmentItemStatus;
+use App\Policies\DiasporaApportionmentPolicy;
 use Brick\Money\Money;
 use Database\Factories\DiasporaApportionmentItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\UsePolicy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +32,7 @@ use Spatie\Activitylog\Support\LogOptions;
     'diaspora_apportionment_id', 'member_id', 'amount_ngwee', 'status',
     'paid_on', 'confirmed_by_member_id', 'reference',
 ])]
+#[UsePolicy(DiasporaApportionmentPolicy::class)]
 class DiasporaApportionmentItem extends Model
 {
     /** @use HasFactory<DiasporaApportionmentItemFactory> */

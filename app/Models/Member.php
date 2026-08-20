@@ -66,6 +66,24 @@ class Member extends Model
         return $this->hasMany(Loan::class)->orderByDesc('requested_at');
     }
 
+    /** @return HasMany<SocialFundTransaction, $this> */
+    public function socialFundTransactions(): HasMany
+    {
+        return $this->hasMany(SocialFundTransaction::class);
+    }
+
+    /** @return HasMany<FuneralGrantClaim, $this> */
+    public function funeralGrantClaims(): HasMany
+    {
+        return $this->hasMany(FuneralGrantClaim::class);
+    }
+
+    /** @return HasMany<UnityBabyClaim, $this> */
+    public function unityBabyClaims(): HasMany
+    {
+        return $this->hasMany(UnityBabyClaim::class);
+    }
+
     /** @return HasMany<NextOfKin, $this> */
     public function nextOfKin(): HasMany
     {

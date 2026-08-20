@@ -4,6 +4,7 @@ use App\Http\Controllers\My\DashboardController;
 use App\Http\Controllers\My\LoanController;
 use App\Http\Controllers\My\ProfileController;
 use App\Http\Controllers\My\SavingsController;
+use App\Http\Controllers\My\SocialFundController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -27,6 +28,15 @@ Route::middleware(['auth', 'verified'])->prefix('my')->name('my.')->group(functi
     Route::post('loan', [LoanController::class, 'store'])
         ->middleware('permission:loans.request')
         ->name('loan.store');
+
+    /*
+     * The member's own corner of the Social Fund: whether their K250 is in, and the
+     * claims they have raised. A claim is checked against the signed-in member in the
+     * controller, so there is no id here to point at somebody else.
+     */
+    Route::get('fund', [SocialFundController::class, 'show'])->name('fund');
+    Route::post('fund/claims/funeral', [SocialFundController::class, 'storeFuneralClaim'])->name('fund.claims.funeral');
+    Route::post('fund/claims/baby', [SocialFundController::class, 'storeBabyClaim'])->name('fund.claims.baby');
 
     Route::get('profile', [ProfileController::class, 'show'])->name('profile');
     Route::put('profile/{member}', [ProfileController::class, 'update'])->name('profile.update');

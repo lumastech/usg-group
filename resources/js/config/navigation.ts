@@ -6,6 +6,7 @@ import {
     FileText,
     Gavel,
     HandCoins,
+    HeartHandshake,
     House,
     LayoutGrid,
     PiggyBank,
@@ -88,6 +89,12 @@ export const adminNavigation: NavSection[] = [
                 permissions: ['loans.disburse'],
             },
             {
+                title: 'Social fund',
+                href: '/app/fund',
+                icon: HeartHandshake,
+                permissions: ['fund.view', 'fund.record', 'fund.approve-outflow'],
+            },
+            {
                 title: 'Payouts',
                 href: '/app/payouts',
                 icon: Coins,
@@ -131,5 +138,5 @@ export const memberNavigation: NavItem[] = [
     },
     { title: 'Savings', href: '/my/savings', icon: Wallet },
     { title: 'Loans', href: '/my/loan', icon: HandCoins },
-    { title: 'Statement', href: '/my/statement', icon: FileText },
+    { title: 'Fund', href: '/my/fund', icon: HeartHandshake },
 ];

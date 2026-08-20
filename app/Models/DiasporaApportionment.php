@@ -5,9 +5,11 @@ namespace App\Models;
 use App\Casts\MoneyCast;
 use App\Enums\ApportionmentItemStatus;
 use App\Models\Concerns\BelongsToCycle;
+use App\Policies\DiasporaApportionmentPolicy;
 use Brick\Money\Money;
 use Database\Factories\DiasporaApportionmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\UsePolicy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -36,6 +38,7 @@ use Spatie\Activitylog\Support\LogOptions;
     'cycle_id', 'total_ngwee', 'apportioned_ngwee', 'share_ngwee', 'remainder_ngwee',
     'declared_on', 'recorded_by_member_id', 'second_approver_member_id', 'note',
 ])]
+#[UsePolicy(DiasporaApportionmentPolicy::class)]
 class DiasporaApportionment extends Model
 {
     /** @use HasFactory<DiasporaApportionmentFactory> */

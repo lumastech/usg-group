@@ -5,6 +5,16 @@
  * same string values the backend sends over Inertia.
  */
 
+export const ApportionmentItemStatus = {
+    Pending: 'pending',
+    Paid: 'paid',
+    Cancelled: 'cancelled',
+} as const;
+
+export type ApportionmentItemStatus = (typeof ApportionmentItemStatus)[keyof typeof ApportionmentItemStatus];
+
+export const apportionmentItemStatusValues: readonly ApportionmentItemStatus[] = ['pending', 'paid', 'cancelled'];
+
 export const ApprovalStatus = {
     Pending: 'pending',
     PartiallyApproved: 'partially_approved',
@@ -59,6 +69,27 @@ export const ExpulsionGround = {
 export type ExpulsionGround = (typeof ExpulsionGround)[keyof typeof ExpulsionGround];
 
 export const expulsionGroundValues: readonly ExpulsionGround[] = ['dishonesty', 'theft', 'unruly_behavior', 'loan_misconduct'];
+
+export const FuneralRelationship = {
+    Parent: 'parent',
+    Spouse: 'spouse',
+    Child: 'child',
+} as const;
+
+export type FuneralRelationship = (typeof FuneralRelationship)[keyof typeof FuneralRelationship];
+
+export const funeralRelationshipValues: readonly FuneralRelationship[] = ['parent', 'spouse', 'child'];
+
+export const GrantClaimStatus = {
+    Submitted: 'submitted',
+    Approved: 'approved',
+    Paid: 'paid',
+    Rejected: 'rejected',
+} as const;
+
+export type GrantClaimStatus = (typeof GrantClaimStatus)[keyof typeof GrantClaimStatus];
+
+export const grantClaimStatusValues: readonly GrantClaimStatus[] = ['submitted', 'approved', 'paid', 'rejected'];
 
 export const InterestAllocationMethod = {
     OwnSavingsFlat: 'own_savings_flat',
@@ -155,6 +186,8 @@ export const Permission = {
     LoansApprove: 'loans.approve',
     LoansDisburse: 'loans.disburse',
     LoansRecordRepayment: 'loans.record-repayment',
+    FundView: 'fund.view',
+    FundRecord: 'fund.record',
     FundApproveOutflow: 'fund.approve-outflow',
     PayoutsApprove: 'payouts.approve',
     PayoutsExecute: 'payouts.execute',
@@ -165,7 +198,7 @@ export const Permission = {
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
 
-export const permissionValues: readonly Permission[] = ['members.view', 'members.manage', 'savings.view', 'savings.record', 'declarations.view', 'declarations.submit-own', 'loans.view', 'loans.request', 'loans.approve', 'loans.disburse', 'loans.record-repayment', 'fund.approve-outflow', 'payouts.approve', 'payouts.execute', 'governance.record', 'reports.view', 'cycles.manage'];
+export const permissionValues: readonly Permission[] = ['members.view', 'members.manage', 'savings.view', 'savings.record', 'declarations.view', 'declarations.submit-own', 'loans.view', 'loans.request', 'loans.approve', 'loans.disburse', 'loans.record-repayment', 'fund.view', 'fund.record', 'fund.approve-outflow', 'payouts.approve', 'payouts.execute', 'governance.record', 'reports.view', 'cycles.manage'];
 
 export const SavingsTransactionType = {
     Contribution: 'contribution',
@@ -177,6 +210,20 @@ export const SavingsTransactionType = {
 export type SavingsTransactionType = (typeof SavingsTransactionType)[keyof typeof SavingsTransactionType];
 
 export const savingsTransactionTypeValues: readonly SavingsTransactionType[] = ['contribution', 'joining_fee', 'adjustment', 'import_opening'];
+
+export const SocialFundTransactionType = {
+    Contribution: 'contribution',
+    LatePenaltyInflow: 'late_penalty_inflow',
+    FuneralGrant: 'funeral_grant',
+    UnityBabyGrant: 'unity_baby_grant',
+    GatheringExpense: 'gathering_expense',
+    DiasporaApportionment: 'diaspora_apportionment',
+    Adjustment: 'adjustment',
+} as const;
+
+export type SocialFundTransactionType = (typeof SocialFundTransactionType)[keyof typeof SocialFundTransactionType];
+
+export const socialFundTransactionTypeValues: readonly SocialFundTransactionType[] = ['contribution', 'late_penalty_inflow', 'funeral_grant', 'unity_baby_grant', 'gathering_expense', 'diaspora_apportionment', 'adjustment'];
 
 export const TransactionSource = {
     Manual: 'manual',

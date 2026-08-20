@@ -45,6 +45,8 @@ export type PermissionName =
     | 'loans.approve'
     | 'loans.disburse'
     | 'loans.record-repayment'
+    | 'fund.view'
+    | 'fund.record'
     | 'fund.approve-outflow'
     | 'payouts.approve'
     | 'payouts.execute'

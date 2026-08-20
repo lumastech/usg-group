@@ -43,7 +43,7 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->unique(['diaspora_apportionment_id', 'member_id']);
+            $table->unique(['diaspora_apportionment_id', 'member_id'], 'apportionment_member_unique');
             $table->index('status');
         });
     }

@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\App\CollateralClaimController;
 use App\Http\Controllers\App\DashboardController;
+use App\Http\Controllers\App\DiasporaApportionmentController;
+use App\Http\Controllers\App\FuneralGrantClaimController;
+use App\Http\Controllers\App\GrantClaimController;
 use App\Http\Controllers\App\LoanApprovalController;
 use App\Http\Controllers\App\LoanController;
 use App\Http\Controllers\App\LoanDefaultController;
@@ -18,7 +21,13 @@ use App\Http\Controllers\App\SavingsController;
 use App\Http\Controllers\App\SavingsDepositController;
 use App\Http\Controllers\App\SavingsExportController;
 use App\Http\Controllers\App\SavingsStatementController;
+use App\Http\Controllers\App\SocialFundContributionController;
+use App\Http\Controllers\App\SocialFundController;
+use App\Http\Controllers\App\SocialFundExportController;
+use App\Http\Controllers\App\SocialFundLedgerController;
+use App\Http\Controllers\App\SocialFundOutflowController;
 use App\Http\Controllers\App\StyleguideController;
+use App\Http\Controllers\App\UnityBabyClaimController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -70,6 +79,49 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
     Route::post('savings', SavingsDepositController::class)
         ->middleware('permission:savings.record')
         ->name('savings.store');
+
+    /*
+     * The Social Fund. Reading it is open to anyone who may read reports — it is the
+     * group's own money for its bereavements and celebrations — while recording an
+     * entry is the treasurers'. Nothing that takes money out is gated by a permission
+     * alone: every outflow additionally carries a second signature checked inside the
+     * domain, so `fund.approve-outflow` opens the dialog rather than the till.
+     */
+    Route::get('fund', [SocialFundController::class, 'index'])->name('fund.index');
+    Route::get('fund/ledger', SocialFundLedgerController::class)->name('fund.ledger');
+    Route::get('fund/export/{format}', SocialFundExportController::class)
+        ->whereIn('format', ['xlsx', 'pdf'])
+        ->name('fund.export');
+    Route::get('fund/claims', GrantClaimController::class)->name('fund.claims');
+    Route::get('fund/apportionment', [DiasporaApportionmentController::class, 'index'])->name('fund.apportionment');
+    Route::post('fund/apportionment/preview', [DiasporaApportionmentController::class, 'preview'])
+        ->name('fund.apportionment.preview');
+
+    Route::middleware('permission:fund.record')->group(function () {
+        Route::post('fund/contributions', SocialFundContributionController::class)->name('fund.contributions.store');
+        Route::post('fund/apportionment/items/{item}/confirm', [DiasporaApportionmentController::class, 'confirm'])
+            ->name('fund.apportionment.confirm');
+    });
+
+    /*
+     * Claims may be raised by anyone the committee is recording for; approving, paying
+     * and rejecting sit with the office that stands behind the fund's outflows.
+     */
+    Route::post('fund/claims/funeral', [FuneralGrantClaimController::class, 'store'])->name('fund.claims.funeral.store');
+    Route::post('fund/claims/baby', [UnityBabyClaimController::class, 'store'])->name('fund.claims.baby.store');
+
+    Route::middleware('permission:fund.approve-outflow')->group(function () {
+        Route::post('fund/claims/funeral/{claim}/approve', [FuneralGrantClaimController::class, 'approve'])->name('fund.claims.funeral.approve');
+        Route::post('fund/claims/funeral/{claim}/pay', [FuneralGrantClaimController::class, 'pay'])->name('fund.claims.funeral.pay');
+        Route::post('fund/claims/funeral/{claim}/reject', [FuneralGrantClaimController::class, 'reject'])->name('fund.claims.funeral.reject');
+
+        Route::post('fund/claims/baby/{claim}/approve', [UnityBabyClaimController::class, 'approve'])->name('fund.claims.baby.approve');
+        Route::post('fund/claims/baby/{claim}/pay', [UnityBabyClaimController::class, 'pay'])->name('fund.claims.baby.pay');
+        Route::post('fund/claims/baby/{claim}/reject', [UnityBabyClaimController::class, 'reject'])->name('fund.claims.baby.reject');
+
+        Route::post('fund/entries', SocialFundOutflowController::class)->name('fund.entries.store');
+        Route::post('fund/apportionment', [DiasporaApportionmentController::class, 'store'])->name('fund.apportionment.store');
+    });
 
     /*
      * Lending. Reading the register and the workbook views needs only a reporting

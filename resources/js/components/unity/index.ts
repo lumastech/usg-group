@@ -7,6 +7,7 @@
  */
 export { default as AppButton } from './AppButton.vue';
 export { default as AppCard } from './AppCard.vue';
+export { default as BarChart } from './BarChart.vue';
 export { default as Can } from './Can.vue';
 export { default as CheckboxInput } from './CheckboxInput.vue';
 export { default as ClientOnly } from './ClientOnly.vue';
@@ -26,6 +27,7 @@ export { default as TextareaInput } from './TextareaInput.vue';
 export { default as TextInput } from './TextInput.vue';
 export { default as Toast } from './Toast.vue';
 
+export type { BarChartPoint } from './BarChart.vue';
 export type { Column, PaginationMeta } from './DataTable.vue';
 export type { SelectOption } from './SelectInput.vue';
 export type { MatrixColumn } from './MatrixTable.vue';

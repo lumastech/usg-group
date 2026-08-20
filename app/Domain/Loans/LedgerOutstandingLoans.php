@@ -2,6 +2,7 @@
 
 namespace App\Domain\Loans;
 
+use App\Domain\SocialFund\SocialFundLedger;
 use App\Enums\LoanTransactionType;
 use App\Models\CycleMonth;
 use App\Models\LoanTransaction;
@@ -20,6 +21,8 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class LedgerOutstandingLoans implements OutstandingLoanProvider
 {
+    public function __construct(protected SocialFundLedger $socialFund) {}
+
     public function balanceFor(Member $member, CycleMonth $month): Money
     {
         $balance = (int) $this->entriesUpTo($member, $month)
@@ -29,10 +32,15 @@ class LedgerOutstandingLoans implements OutstandingLoanProvider
         return Kwacha::ofNgwee(max(0, $balance));
     }
 
-    /** The Social Fund keeps its own ledger; module 4 supplies this figure. */
+    /**
+     * The member's own position in the Social Fund at the end of the month.
+     *
+     * The fund keeps its own ledger, so this is read from there rather than derived
+     * here — the savings summary shows the figure, it does not own it.
+     */
     public function socialFundBalanceFor(Member $member, CycleMonth $month): Money
     {
-        return Kwacha::zero();
+        return $this->socialFund->memberBalanceAt($member, $month);
     }
 
     public function interestPaidTo(Member $member, CycleMonth $month): Money

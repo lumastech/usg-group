@@ -8,9 +8,11 @@ use App\Enums\GrantClaimStatus;
 use App\Enums\SocialFundTransactionType;
 use App\Models\Concerns\BelongsToCycle;
 use App\Models\Concerns\IsGrantClaim;
+use App\Policies\GrantClaimPolicy;
 use Brick\Money\Money;
 use Database\Factories\FuneralGrantClaimFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\UsePolicy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -43,6 +45,7 @@ use Spatie\Activitylog\Support\LogOptions;
     'amount_ngwee', 'first_approver_member_id', 'second_approver_member_id',
     'approved_at', 'paid_at', 'rejected_at', 'rejected_by_member_id', 'note',
 ])]
+#[UsePolicy(GrantClaimPolicy::class)]
 class FuneralGrantClaim extends Model
 {
     /** @use HasFactory<FuneralGrantClaimFactory> */
