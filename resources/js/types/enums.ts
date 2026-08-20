@@ -59,6 +59,16 @@ export type CycleStatus = (typeof CycleStatus)[keyof typeof CycleStatus];
 
 export const cycleStatusValues: readonly CycleStatus[] = ['draft', 'active', 'closing', 'closed'];
 
+export const DeclarationStatus = {
+    Submitted: 'submitted',
+    Locked: 'locked',
+    Processed: 'processed',
+} as const;
+
+export type DeclarationStatus = (typeof DeclarationStatus)[keyof typeof DeclarationStatus];
+
+export const declarationStatusValues: readonly DeclarationStatus[] = ['submitted', 'locked', 'processed'];
+
 export const ExpulsionGround = {
     Dishonesty: 'dishonesty',
     Theft: 'theft',
@@ -181,6 +191,8 @@ export const Permission = {
     SavingsRecord: 'savings.record',
     DeclarationsView: 'declarations.view',
     DeclarationsSubmitOwn: 'declarations.submit-own',
+    DeclarationsRecord: 'declarations.record',
+    TradingOperate: 'trading.operate',
     LoansView: 'loans.view',
     LoansRequest: 'loans.request',
     LoansApprove: 'loans.approve',
@@ -198,7 +210,7 @@ export const Permission = {
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
 
-export const permissionValues: readonly Permission[] = ['members.view', 'members.manage', 'savings.view', 'savings.record', 'declarations.view', 'declarations.submit-own', 'loans.view', 'loans.request', 'loans.approve', 'loans.disburse', 'loans.record-repayment', 'fund.view', 'fund.record', 'fund.approve-outflow', 'payouts.approve', 'payouts.execute', 'governance.record', 'reports.view', 'cycles.manage'];
+export const permissionValues: readonly Permission[] = ['members.view', 'members.manage', 'savings.view', 'savings.record', 'declarations.view', 'declarations.submit-own', 'declarations.record', 'trading.operate', 'loans.view', 'loans.request', 'loans.approve', 'loans.disburse', 'loans.record-repayment', 'fund.view', 'fund.record', 'fund.approve-outflow', 'payouts.approve', 'payouts.execute', 'governance.record', 'reports.view', 'cycles.manage'];
 
 export const SavingsTransactionType = {
     Contribution: 'contribution',
@@ -224,6 +236,15 @@ export const SocialFundTransactionType = {
 export type SocialFundTransactionType = (typeof SocialFundTransactionType)[keyof typeof SocialFundTransactionType];
 
 export const socialFundTransactionTypeValues: readonly SocialFundTransactionType[] = ['contribution', 'late_penalty_inflow', 'funeral_grant', 'unity_baby_grant', 'gathering_expense', 'diaspora_apportionment', 'adjustment'];
+
+export const TradingSessionStatus = {
+    Open: 'open',
+    Concluded: 'concluded',
+} as const;
+
+export type TradingSessionStatus = (typeof TradingSessionStatus)[keyof typeof TradingSessionStatus];
+
+export const tradingSessionStatusValues: readonly TradingSessionStatus[] = ['open', 'concluded'];
 
 export const TransactionSource = {
     Manual: 'manual',

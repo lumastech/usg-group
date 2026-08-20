@@ -26,6 +26,7 @@ export { default as Stepper } from './Stepper.vue';
 export { default as TextareaInput } from './TextareaInput.vue';
 export { default as TextInput } from './TextInput.vue';
 export { default as Toast } from './Toast.vue';
+export { default as WindowCountdown } from './WindowCountdown.vue';
 
 export type { BarChartPoint } from './BarChart.vue';
 export type { Column, PaginationMeta } from './DataTable.vue';

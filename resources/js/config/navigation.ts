@@ -3,6 +3,7 @@ import {
     ChartPie,
     ClipboardList,
     Coins,
+    Handshake,
     FileText,
     Gavel,
     HandCoins,
@@ -66,6 +67,12 @@ export const adminNavigation: NavSection[] = [
                 permissions: ['declarations.view'],
             },
             {
+                title: 'Trading',
+                href: '/app/trading',
+                icon: Handshake,
+                permissions: ['trading.operate', 'declarations.view'],
+            },
+            {
                 title: 'Savings ledger',
                 href: '/app/savings',
                 icon: PiggyBank,
@@ -92,7 +99,11 @@ export const adminNavigation: NavSection[] = [
                 title: 'Social fund',
                 href: '/app/fund',
                 icon: HeartHandshake,
-                permissions: ['fund.view', 'fund.record', 'fund.approve-outflow'],
+                permissions: [
+                    'fund.view',
+                    'fund.record',
+                    'fund.approve-outflow',
+                ],
             },
             {
                 title: 'Payouts',

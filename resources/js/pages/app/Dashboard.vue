@@ -6,17 +6,28 @@
  * the reports render — it never recomputes a total of its own. The month's
  * declaration and trading windows are left to CycleBanner in the layout.
  */
+import { Link } from '@inertiajs/vue3';
 import {
     CalendarDays,
+    ClipboardList,
     Coins,
+    Handshake,
     PiggyBank,
     TriangleAlert,
     Wallet,
 } from '@lucide/vue';
 import { computed } from 'vue';
 
-import { AppCard, EmptyState, StatCard } from '@/components/unity';
+import {
+    AppCard,
+    EmptyState,
+    StatCard,
+    StatusBadge,
+    WindowCountdown,
+} from '@/components/unity';
 import AdminLayout from '@/layouts/unity/AdminLayout.vue';
+import type { DeclarationMonth } from '@/types/declarations';
+import type { TradingSessionStatus } from '@/types/enums';
 
 interface Overview {
     cycle: {
@@ -75,9 +86,17 @@ interface MissingMember {
     full_name: string;
 }
 
+/** The month's window, with what it is still waiting on. */
+type MonthWindow = DeclarationMonth & {
+    missing_declarations: number;
+    session_status: TradingSessionStatus | null;
+    session_id: number | null;
+};
+
 const props = defineProps<{
     overview: Overview | null;
     membersMissingSavings?: MissingMember[];
+    monthWindow?: MonthWindow | null;
 }>();
 
 const formatDate = (value: string) =>
@@ -134,6 +153,60 @@ const description = computed(() => {
         </AppCard>
 
         <div v-else class="space-y-5">
+            <!-- Where the month is, and what it is still waiting for: the two
+                 questions the committee opens this page to answer in trading week. -->
+            <div v-if="monthWindow" class="space-y-3">
+                <WindowCountdown
+                    :window="monthWindow.window"
+                    :seconds-remaining="monthWindow.seconds_remaining"
+                />
+
+                <div class="grid gap-4 sm:grid-cols-3">
+                    <Link href="/app/declarations" class="block">
+                        <StatCard
+                            label="Missing declarations"
+                            :value="monthWindow.missing_declarations"
+                            :icon="ClipboardList"
+                            :accent="
+                                monthWindow.missing_declarations > 0
+                                    ? 'gold'
+                                    : 'none'
+                            "
+                            :hint="`Active members not on the ${monthWindow.label} sheet`"
+                        />
+                    </Link>
+
+                    <Link href="/app/trading" class="block">
+                        <StatCard
+                            label="Trading session"
+                            :value="
+                                monthWindow.session_status === null
+                                    ? 'Not opened'
+                                    : monthWindow.session_status === 'open'
+                                      ? 'Open'
+                                      : 'Concluded'
+                            "
+                            :icon="Handshake"
+                            :hint="`Concludes ${formatDate(monthWindow.trading_concludes_on)}`"
+                        />
+                    </Link>
+
+                    <AppCard class="flex items-center justify-between gap-3">
+                        <span class="text-sm text-muted-foreground"
+                            >Declaration window</span
+                        >
+                        <StatusBadge
+                            :status="monthWindow.status"
+                            :label="
+                                monthWindow.declarations_open
+                                    ? 'Open'
+                                    : 'Closed'
+                            "
+                        />
+                    </AppCard>
+                </div>
+            </div>
+
             <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard
                     label="Total savings"

@@ -41,7 +41,10 @@ export type PermissionName =
     | 'savings.record'
     | 'declarations.view'
     | 'declarations.submit-own'
+    | 'declarations.record'
+    | 'trading.operate'
     | 'loans.view'
+    | 'loans.request'
     | 'loans.approve'
     | 'loans.disburse'
     | 'loans.record-repayment'
@@ -71,6 +74,8 @@ export type CurrentCycleMonth = {
     declarations_open: boolean;
     trading_open: boolean;
     window: CycleWindow;
+    /** Countdown to the next change of state, or null when nothing is pending. */
+    seconds_remaining: number | null;
 };
 
 /** All money fields are integer ngwee. Format with formatMoney(). */

@@ -92,6 +92,8 @@ enum MemberRole: string
                 Permission::SavingsRecord,
                 Permission::DeclarationsView,
                 Permission::DeclarationsSubmitOwn,
+                Permission::DeclarationsRecord,
+                Permission::TradingOperate,
                 Permission::ReportsView,
             ],
 

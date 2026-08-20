@@ -19,6 +19,9 @@ enum Permission: string
 
     case DeclarationsView = 'declarations.view';
     case DeclarationsSubmitOwn = 'declarations.submit-own';
+    case DeclarationsRecord = 'declarations.record';
+
+    case TradingOperate = 'trading.operate';
 
     case LoansView = 'loans.view';
     case LoansRequest = 'loans.request';
@@ -60,6 +63,8 @@ enum Permission: string
             self::SavingsRecord => 'Record savings',
             self::DeclarationsView => 'View declarations',
             self::DeclarationsSubmitOwn => 'Submit own declaration',
+            self::DeclarationsRecord => 'Record declarations for members',
+            self::TradingOperate => 'Operate the trading console',
             self::LoansView => 'View loans',
             self::LoansRequest => 'Request a loan',
             self::LoansApprove => 'Approve loans',

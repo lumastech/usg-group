@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\App\CollateralClaimController;
 use App\Http\Controllers\App\DashboardController;
+use App\Http\Controllers\App\DeclarationController;
+use App\Http\Controllers\App\DeclarationExportController;
 use App\Http\Controllers\App\DiasporaApportionmentController;
 use App\Http\Controllers\App\FuneralGrantClaimController;
 use App\Http\Controllers\App\GrantClaimController;
@@ -27,6 +29,9 @@ use App\Http\Controllers\App\SocialFundExportController;
 use App\Http\Controllers\App\SocialFundLedgerController;
 use App\Http\Controllers\App\SocialFundOutflowController;
 use App\Http\Controllers\App\StyleguideController;
+use App\Http\Controllers\App\TradingController;
+use App\Http\Controllers\App\TradingEntryController;
+use App\Http\Controllers\App\TradingSessionController;
 use App\Http\Controllers\App\UnityBabyClaimController;
 use Illuminate\Support\Facades\Route;
 
@@ -61,6 +66,40 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
         Route::put('members/{member}', [MemberController::class, 'update'])->name('members.update');
         Route::put('members/{member}/status', MemberStatusController::class)->name('members.status');
         Route::post('members/{member}/invite', MemberInviteController::class)->name('members.invite');
+    });
+
+    /*
+     * Declarations. Reading the month's sheet needs only a viewing permission — it is
+     * read out at the table — while capturing one on somebody's behalf is the
+     * treasurer's late-entry path and carries `declarations.record`.
+     */
+    Route::get('declarations', [DeclarationController::class, 'index'])->name('declarations.index');
+    Route::get('declarations/export/{format}', DeclarationExportController::class)
+        ->whereIn('format', ['xlsx', 'pdf'])
+        ->name('declarations.export');
+
+    Route::post('declarations', [DeclarationController::class, 'store'])
+        ->middleware('permission:declarations.record')
+        ->name('declarations.store');
+
+    /*
+     * The trading console. Watching the day is open to anyone who may read the
+     * group's figures; every write, and above all concluding the session, belongs to
+     * `trading.operate` — concluding is the act that posts the whole month.
+     */
+    Route::get('trading', [TradingController::class, 'index'])->name('trading.index');
+
+    Route::middleware('permission:trading.operate')->group(function () {
+        Route::post('trading/months/{month}/open', [TradingSessionController::class, 'store'])
+            ->name('trading.open');
+        Route::post('trading/sessions/{session}/conclude', [TradingSessionController::class, 'conclude'])
+            ->name('trading.conclude');
+        Route::post('trading/entries/{entry}/receipt', [TradingEntryController::class, 'store'])
+            ->name('trading.entries.receipt');
+        Route::delete('trading/entries/{entry}/receipt', [TradingEntryController::class, 'destroy'])
+            ->name('trading.entries.receipt.destroy');
+        Route::post('trading/entries/{entry}/disburse', [TradingEntryController::class, 'disburse'])
+            ->name('trading.entries.disburse');
     });
 
     /*

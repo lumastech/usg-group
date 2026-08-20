@@ -109,9 +109,7 @@ defineProps<{
                                 v-if="month.interest_ngwee !== 0"
                                 class="tabular block text-xs text-gold-700 dark:text-gold-300"
                             >
-                                +{{
-                                    formatMoney(month.interest_ngwee)
-                                }}
+                                +{{ formatMoney(month.interest_ngwee) }}
                                 interest
                             </span>
                         </span>

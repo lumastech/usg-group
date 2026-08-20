@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Domain\Cycles\CurrentCycle;
+use App\Domain\Declarations\DeclarationWindow;
 use App\Models\Cycle;
 use App\Models\CycleMonth;
 use App\Models\Member;
@@ -134,42 +135,15 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
+     * Where in the month we are, read from the one service that decides it.
+     *
+     * The declaration screens and the trading console ask DeclarationWindow the same
+     * question, so the banner in the shell can never disagree with the form under it.
+     *
      * @return array<string, mixed>
      */
     protected function month(CycleMonth $month): array
     {
-        $now = Carbon::now();
-
-        return [
-            'id' => $month->id,
-            'sequence' => $month->sequence,
-            'label' => $month->label(),
-            'status' => $month->status,
-            'declarations_open_at' => $month->declarations_open_at->toIso8601String(),
-            'declarations_close_at' => $month->declarations_close_at->toIso8601String(),
-            'trading_starts_on' => $month->trading_starts_on->toDateString(),
-            'trading_concludes_on' => $month->trading_concludes_on->toDateString(),
-            'disbursement_on' => $month->disbursement_on->toDateString(),
-            'declarations_open' => $month->declarationsOpenAt($now),
-            'trading_open' => $now->betweenIncluded(
-                $month->trading_starts_on->copy()->startOfDay(),
-                $month->trading_concludes_on->copy()->endOfDay(),
-            ),
-            'window' => $this->window($month, $now),
-        ];
-    }
-
-    /**
-     * A single word for where in the month we are, which the UI banners key off.
-     */
-    protected function window(CycleMonth $month, Carbon $now): string
-    {
-        return match (true) {
-            $now->lessThan($month->declarations_open_at) => 'before_declarations',
-            $month->declarationsOpenAt($now) => 'declarations',
-            $now->lessThan($month->trading_starts_on->copy()->startOfDay()) => 'between',
-            $now->lessThanOrEqualTo($month->trading_concludes_on->copy()->endOfDay()) => 'trading',
-            default => 'closed',
-        };
+        return app(DeclarationWindow::class)->payload($month);
     }
 }

@@ -6,6 +6,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | --- | --- |
 | app/Domain/Approvals/** | .ai/rules/approvals.md |
 | app/Http/Controllers/** | .ai/rules/controllers.md |
+| app/Domain/Declarations/** | .ai/rules/declarations.md |
 | app/Domain/** | .ai/rules/domain.md |
 | app/Listeners/** | .ai/rules/listeners.md |
 | app/Domain/Loans/**, app/Domain/Loans/LoanEligibilityService.php | .ai/rules/loans.md |
@@ -16,4 +17,5 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Domain/Savings/** | .ai/rules/savings.md |
 | database/seeders/** | .ai/rules/seeders.md |
 | app/Domain/SocialFund/** | .ai/rules/social-fund.md |
+| app/Domain/Trading/** | .ai/rules/trading.md |
 | resources/js/components/unity/** | .ai/rules/unity.md |

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\My\DashboardController;
+use App\Http\Controllers\My\DeclarationController;
 use App\Http\Controllers\My\LoanController;
 use App\Http\Controllers\My\ProfileController;
 use App\Http\Controllers\My\SavingsController;
@@ -20,6 +21,16 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->prefix('my')->name('my.')->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
+
+    /*
+     * The month's declaration. The window rules live in DeclarationService, so the
+     * route is open all month and the form itself locks — a member arriving on the 5th
+     * is shown when the window next opens rather than a 403.
+     */
+    Route::get('declarations', [DeclarationController::class, 'show'])->name('declarations');
+    Route::post('declarations', [DeclarationController::class, 'store'])
+        ->middleware('permission:declarations.submit-own')
+        ->name('declarations.store');
 
     Route::get('savings', SavingsController::class)->name('savings');
     Route::get('savings/statement', [SavingsController::class, 'statement'])->name('savings.statement');
