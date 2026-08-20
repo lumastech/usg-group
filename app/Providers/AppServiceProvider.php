@@ -7,6 +7,8 @@ use App\Domain\Loans\LedgerInterestIncome;
 use App\Domain\Loans\LedgerOutstandingLoans;
 use App\Domain\Loans\MonthlyInterestIncome;
 use App\Domain\Loans\OutstandingLoanProvider;
+use App\Domain\Payouts\NoRounding;
+use App\Domain\Payouts\RoundingPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Date;
@@ -30,6 +32,15 @@ class AppServiceProvider extends ServiceProvider
          */
         $this->app->bind(OutstandingLoanProvider::class, LedgerOutstandingLoans::class);
         $this->app->bind(MonthlyInterestIncome::class, LedgerInterestIncome::class);
+
+        /*
+         * The workbook's ROUNDOFF ADJSTMNT column. The group has not settled on a
+         * convention, so nothing is rounded and net payable equals net value to the
+         * ngwee. Adopting one — say RoundDownToStep(5_000) for whole K50 notes — is a
+         * change of this line; the statement, the voucher, the payouts row and the
+         * remainder posting to the Social Fund already carry the adjustment.
+         */
+        $this->app->bind(RoundingPolicy::class, NoRounding::class);
     }
 
     /**

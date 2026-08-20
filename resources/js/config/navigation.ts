@@ -106,8 +106,8 @@ export const adminNavigation: NavSection[] = [
                 ],
             },
             {
-                title: 'Payouts',
-                href: '/app/payouts',
+                title: 'Closures',
+                href: '/app/closures',
                 icon: Coins,
                 permissions: ['payouts.approve', 'payouts.execute'],
             },

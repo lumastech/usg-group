@@ -12,6 +12,7 @@ use App\Models\Member;
 use App\Models\MemberMonthBalance;
 use App\Support\Kwacha;
 use Brick\Money\Money;
+use Carbon\CarbonInterface;
 
 beforeEach(function () {
     $this->ledger = app(SavingsLedger::class);
@@ -53,6 +54,11 @@ it('subtracts what the member owes once a lending engine answers', function () {
     app()->instance(OutstandingLoanProvider::class, new class implements OutstandingLoanProvider
     {
         public function balanceFor(Member $member, CycleMonth $month): Money
+        {
+            return Kwacha::of(50000);
+        }
+
+        public function balanceOn(Member $member, CarbonInterface $date): Money
         {
             return Kwacha::of(50000);
         }

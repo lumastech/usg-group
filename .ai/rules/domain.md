@@ -11,3 +11,6 @@ Borrowers pay 5%/month reducing balance into a pool. That whole pool is then red
 Exception: the opening month of a cycle (December) has no lending history, so each member earns a flat 5% on their own savings instead. Driven by CycleMonth::$interest_allocation_method.
 
 Allocation uses largest-remainder rounding in whole ngwee (InterestPoolAllocator::largestRemainder) so shares always sum to the pool exactly. Never switch this to round() per member — it leaks or invents ngwee.
+
+## Executing a payout freezes a member's ledgers
+members.ledgers_frozen_at is set by App\Domain\Payouts\LedgerFreeze when a closure is settled. SavingsLedger::record, LoanLedger::post and SocialFundLedger::post all call LedgerFreeze::assertOpen first and throw MemberLedgersFrozenException, so a settled position can never drift from the voucher the member is holding. Any new ledger that writes against a member must ask the same gate.

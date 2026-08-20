@@ -52,12 +52,13 @@ export const CycleStatus = {
     Draft: 'draft',
     Active: 'active',
     Closing: 'closing',
+    ShareOut: 'share_out',
     Closed: 'closed',
 } as const;
 
 export type CycleStatus = (typeof CycleStatus)[keyof typeof CycleStatus];
 
-export const cycleStatusValues: readonly CycleStatus[] = ['draft', 'active', 'closing', 'closed'];
+export const cycleStatusValues: readonly CycleStatus[] = ['draft', 'active', 'closing', 'share_out', 'closed'];
 
 export const DeclarationStatus = {
     Submitted: 'submitted',
@@ -184,6 +185,30 @@ export type NextOfKinRelationship = (typeof NextOfKinRelationship)[keyof typeof 
 
 export const nextOfKinRelationshipValues: readonly NextOfKinRelationship[] = ['spouse', 'parent', 'sibling', 'child', 'other'];
 
+export const PayoutCase = {
+    ActiveShareOut: 'active_share_out',
+    LeftEarly: 'left_early',
+    Expelled: 'expelled',
+    Deceased: 'deceased',
+} as const;
+
+export type PayoutCase = (typeof PayoutCase)[keyof typeof PayoutCase];
+
+export const payoutCaseValues: readonly PayoutCase[] = ['active_share_out', 'left_early', 'expelled', 'deceased'];
+
+export const PayoutLineKind = {
+    Credit: 'credit',
+    Debit: 'debit',
+    Subtotal: 'subtotal',
+    Adjustment: 'adjustment',
+    Total: 'total',
+    Note: 'note',
+} as const;
+
+export type PayoutLineKind = (typeof PayoutLineKind)[keyof typeof PayoutLineKind];
+
+export const payoutLineKindValues: readonly PayoutLineKind[] = ['credit', 'debit', 'subtotal', 'adjustment', 'total', 'note'];
+
 export const Permission = {
     MembersView: 'members.view',
     MembersManage: 'members.manage',
@@ -222,6 +247,17 @@ export const SavingsTransactionType = {
 export type SavingsTransactionType = (typeof SavingsTransactionType)[keyof typeof SavingsTransactionType];
 
 export const savingsTransactionTypeValues: readonly SavingsTransactionType[] = ['contribution', 'joining_fee', 'adjustment', 'import_opening'];
+
+export const SettlementStatus = {
+    Outstanding: 'outstanding',
+    Agreed: 'agreed',
+    Settled: 'settled',
+    WrittenOff: 'written_off',
+} as const;
+
+export type SettlementStatus = (typeof SettlementStatus)[keyof typeof SettlementStatus];
+
+export const settlementStatusValues: readonly SettlementStatus[] = ['outstanding', 'agreed', 'settled', 'written_off'];
 
 export const SocialFundTransactionType = {
     Contribution: 'contribution',

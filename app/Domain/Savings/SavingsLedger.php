@@ -2,6 +2,7 @@
 
 namespace App\Domain\Savings;
 
+use App\Domain\Payouts\LedgerFreeze;
 use App\Domain\Support\MoneyMutator;
 use App\Enums\MemberStatus;
 use App\Enums\SavingsTransactionType;
@@ -24,7 +25,10 @@ use Carbon\CarbonInterface;
  */
 class SavingsLedger
 {
-    public function __construct(protected MoneyMutator $mutator) {}
+    public function __construct(
+        protected MoneyMutator $mutator,
+        protected LedgerFreeze $freeze,
+    ) {}
 
     public function record(
         Member $member,
@@ -36,6 +40,8 @@ class SavingsLedger
         TransactionSource $source = TransactionSource::Manual,
         ?CarbonInterface $occurredOn = null,
     ): SavingsTransaction {
+        $this->freeze->assertOpen($member);
+
         if ($type->followsIncrementRules()) {
             $this->assertValidContribution($member, $month, $amount);
         }
@@ -107,9 +113,11 @@ class SavingsLedger
         }
     }
 
-    /** Only members still in the group may add to their savings. */
+    /** Only members still in the group, and not yet settled, may add to their savings. */
     public function assertMemberMaySave(Member $member): void
     {
+        $this->freeze->assertOpen($member);
+
         if ($member->status !== MemberStatus::Active) {
             throw new MemberNotActiveException(
                 "{$member->full_name} is {$member->status->label()} and can no longer save into this cycle."

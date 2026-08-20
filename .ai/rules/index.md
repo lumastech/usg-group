@@ -11,7 +11,9 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Listeners/** | .ai/rules/listeners.md |
 | app/Domain/Loans/**, app/Domain/Loans/LoanEligibilityService.php | .ai/rules/loans.md |
 | app/Domain/Members/** | .ai/rules/members.md |
+| database/migrations/** | .ai/rules/migrations.md |
 | app/Models/** | .ai/rules/models.md |
+| app/Domain/Payouts/** | .ai/rules/payouts.md |
 | app/Http/Resources/** | .ai/rules/resources.md |
 | resources/js/routes/** | .ai/rules/routes.md |
 | app/Domain/Savings/** | .ai/rules/savings.md |

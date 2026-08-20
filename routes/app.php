@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\App\ClosureController;
+use App\Http\Controllers\App\ClosureExecutionController;
 use App\Http\Controllers\App\CollateralClaimController;
 use App\Http\Controllers\App\DashboardController;
 use App\Http\Controllers\App\DeclarationController;
@@ -19,6 +21,7 @@ use App\Http\Controllers\App\LoanTargetController;
 use App\Http\Controllers\App\MemberController;
 use App\Http\Controllers\App\MemberInviteController;
 use App\Http\Controllers\App\MemberStatusController;
+use App\Http\Controllers\App\PayoutVoucherController;
 use App\Http\Controllers\App\SavingsController;
 use App\Http\Controllers\App\SavingsDepositController;
 use App\Http\Controllers\App\SavingsExportController;
@@ -192,6 +195,21 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
     Route::post('loans/{loan}/repayments', LoanRepaymentController::class)
         ->middleware('permission:loans.record-repayment')
         ->name('loans.repayments.store');
+
+    /*
+     * Closures. Reading who is owed what is open to anyone who may read the group's
+     * figures — the register is read out at share-out — but executing one is
+     * `payouts.execute` and additionally carries a second signature checked inside the
+     * domain. Nothing here accepts an amount from the client: the position is
+     * recomputed from the ledgers at the moment it is signed for.
+     */
+    Route::get('closures', [ClosureController::class, 'index'])->name('closures.index');
+    Route::get('closures/{member}', [ClosureController::class, 'show'])->name('closures.show');
+    Route::get('payouts/{payout}/voucher', PayoutVoucherController::class)->name('payouts.voucher');
+
+    Route::post('closures/{member}', ClosureExecutionController::class)
+        ->middleware('permission:payouts.execute')
+        ->name('closures.execute');
 
     /*
      * Approval, default and collateral all sit with the office that approves lending,

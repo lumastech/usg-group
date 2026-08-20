@@ -2,6 +2,7 @@
 
 namespace App\Domain\Loans;
 
+use App\Domain\Payouts\LedgerFreeze;
 use App\Domain\Support\MoneyMutator;
 use App\Enums\LoanTransactionType;
 use App\Models\CycleMonth;
@@ -22,7 +23,10 @@ use Carbon\CarbonInterface;
  */
 class LoanLedger
 {
-    public function __construct(protected MoneyMutator $mutator) {}
+    public function __construct(
+        protected MoneyMutator $mutator,
+        protected LedgerFreeze $freeze,
+    ) {}
 
     /**
      * Posts one entry and moves the loan's cached balance with it.
@@ -43,6 +47,8 @@ class LoanLedger
         array $portions = [],
         ?string $notes = null,
     ): LoanTransaction {
+        $this->freeze->assertOpen($loan->member);
+
         $reason = $type->label().' of '.Kwacha::format($amount)
             ." on loan #{$loan->id} for {$loan->member->full_name}";
 

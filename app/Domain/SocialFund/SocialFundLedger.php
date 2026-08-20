@@ -3,6 +3,7 @@
 namespace App\Domain\SocialFund;
 
 use App\Domain\Approvals\TwoPersonRule;
+use App\Domain\Payouts\LedgerFreeze;
 use App\Domain\Support\MoneyMutator;
 use App\Enums\SocialFundTransactionType;
 use App\Exceptions\DomainRuleException;
@@ -32,6 +33,7 @@ class SocialFundLedger
     public function __construct(
         protected MoneyMutator $mutator,
         protected TwoPersonRule $twoPersonRule,
+        protected LedgerFreeze $freeze,
     ) {}
 
     /**
@@ -112,6 +114,7 @@ class SocialFundLedger
             throw DomainRuleException::make('A social fund entry must move a non-zero amount.');
         }
 
+        $this->freeze->assertOpen($member);
         $this->assertApproved($type, $ngwee, $actor, $secondApprover, $member);
         $this->assertCovered($cycle, $ngwee);
 

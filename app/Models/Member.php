@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
@@ -38,6 +39,7 @@ use Spatie\Activitylog\Support\LogOptions;
  * @property string|null $status_reason
  * @property ExpulsionGround|null $expulsion_ground
  * @property Carbon|null $date_of_death
+ * @property Carbon|null $ledgers_frozen_at
  * @property Carbon $joined_on
  * @property int $joining_month_sequence
  * @property Money $joining_fee_ngwee
@@ -46,7 +48,7 @@ use Spatie\Activitylog\Support\LogOptions;
 #[Fillable([
     'cycle_id', 'user_id', 'member_number', 'full_name', 'nrc_number', 'physical_address',
     'phone', 'is_diaspora', 'status', 'status_effective_on', 'status_changed_at',
-    'status_reason', 'expulsion_ground', 'date_of_death', 'joined_on',
+    'status_reason', 'expulsion_ground', 'date_of_death', 'ledgers_frozen_at', 'joined_on',
     'joining_month_sequence', 'joining_fee_ngwee', 'joining_fee_paid',
 ])]
 class Member extends Model
@@ -90,6 +92,24 @@ class Member extends Model
         return $this->hasMany(NextOfKin::class);
     }
 
+    /** @return HasOne<Payout, $this> */
+    public function payout(): HasOne
+    {
+        return $this->hasOne(Payout::class);
+    }
+
+    /** @return HasOne<MemberDebt, $this> */
+    public function debt(): HasOne
+    {
+        return $this->hasOne(MemberDebt::class);
+    }
+
+    /** @return HasOne<NextOfKinRepaymentArrangement, $this> */
+    public function repaymentArrangement(): HasOne
+    {
+        return $this->hasOne(NextOfKinRepaymentArrangement::class);
+    }
+
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
@@ -100,6 +120,17 @@ class Member extends Model
     public function scopeActive(Builder $query): void
     {
         $query->where('status', MemberStatus::Active);
+    }
+
+    /**
+     * Whether this member's ledgers have been closed to further movement.
+     *
+     * Set when their payout is executed. From then on nothing may be posted against
+     * them — the settlement was computed from those ledgers and must stay explicable.
+     */
+    public function ledgersFrozen(): bool
+    {
+        return $this->ledgers_frozen_at !== null;
     }
 
     public function hasRole(MemberRole $role): bool
@@ -156,6 +187,7 @@ class Member extends Model
             'status_changed_at' => 'datetime',
             'expulsion_ground' => ExpulsionGround::class,
             'date_of_death' => 'date',
+            'ledgers_frozen_at' => 'datetime',
             'joined_on' => 'date',
             'joining_fee_ngwee' => MoneyCast::class,
             'joining_fee_paid' => 'boolean',
