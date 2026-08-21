@@ -222,7 +222,7 @@ function openShareOut(payload: {
                             label="Override reason"
                             :error="form.errors.override_note"
                             placeholder="Why the committee is opening share-out with checks outstanding"
-                            rows="3"
+                            :rows="3"
                         />
 
                         <p

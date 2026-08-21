@@ -250,10 +250,10 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
      * The reports hub and the risk page. Both only read, and each card in the hub is
      * filtered by the permission the download route behind it already enforces.
      */
-    Route::get('reports', [ReportsController::class, 'index'])->name('reports.index');
-    Route::post('reports/statement-pack', [ReportsController::class, 'store'])
-        ->middleware('permission:reports.view')
-        ->name('reports.statement-pack');
+    Route::middleware('permission:reports.view')->group(function () {
+        Route::get('reports', [ReportsController::class, 'index'])->name('reports.index');
+        Route::post('reports/statement-pack', [ReportsController::class, 'store'])->name('reports.statement-pack');
+    });
 
     Route::get('risk', RiskController::class)->name('risk');
 

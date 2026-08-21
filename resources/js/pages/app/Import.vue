@@ -51,7 +51,7 @@ function pick(event: Event): void {
     uploadForm.workbook = file.value;
 }
 
-function upload(): void {
+function submitUpload(): void {
     uploadForm.post('/app/import/upload', {
         preserveScroll: true,
         forceFormData: true,
@@ -107,7 +107,7 @@ function discard(): void {
                     <div class="flex flex-wrap items-center gap-2">
                         <AppButton
                             :disabled="!file || uploadForm.processing"
-                            @click="upload"
+                            @click="submitUpload"
                         >
                             <Upload class="size-4" />
                             Upload and dry-run

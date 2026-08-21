@@ -4,7 +4,6 @@ import {
     ClipboardList,
     Coins,
     Handshake,
-    FileText,
     FileUp,
     Gavel,
     HandCoins,

@@ -584,6 +584,27 @@ class WorkbookImporter
         return $columns;
     }
 
+    /**
+     * The first column whose heading matches one of the given words.
+     *
+     * @param  array<int, mixed>  $headerRow
+     * @param  array<int, string>  $wanted
+     */
+    protected function columnMatching(array $headerRow, array $wanted): ?int
+    {
+        foreach ($headerRow as $index => $cell) {
+            $heading = $this->reader->normalise((string) $cell);
+
+            foreach ($wanted as $needle) {
+                if ($heading !== '' && str_contains($heading, $needle)) {
+                    return (int) $index;
+                }
+            }
+        }
+
+        return null;
+    }
+
     /** Whether the row under the headings is sub-headings rather than the first member. */
     protected function subHeaderDepth(array $rows, int $header): int
     {
