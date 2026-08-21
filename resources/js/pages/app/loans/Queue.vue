@@ -25,7 +25,7 @@ import { formatMoney } from '@/lib/money';
 import type { Loan } from '@/types/loans';
 
 const props = defineProps<{
-    queue: { data: Loan[] };
+    queue: Loan[];
     month: {
         id: number;
         label: string;
@@ -80,7 +80,7 @@ function disburseOutOfOrder(): void {
             <div class="grid gap-4 sm:grid-cols-3">
                 <StatCard
                     label="Waiting"
-                    :value="queue.data.length"
+                    :value="queue.length"
                     :icon="Users"
                     hint="Approved and unpaid"
                 />
@@ -108,7 +108,7 @@ function disburseOutOfOrder(): void {
                 description="Ordered by the moment each request was captured. Money is finite on the day, so the order is the fairness."
                 flush
             >
-                <div v-if="queue.data.length === 0" class="p-5">
+                <div v-if="queue.length === 0" class="p-5">
                     <EmptyState
                         title="Nothing in the queue"
                         description="Approved loans appear here, oldest request first."
@@ -117,7 +117,7 @@ function disburseOutOfOrder(): void {
 
                 <ol v-else class="divide-y divide-border">
                     <li
-                        v-for="(loan, index) in queue.data"
+                        v-for="(loan, index) in queue"
                         :key="loan.id"
                         class="flex flex-wrap items-center gap-4 px-5 py-4"
                     >

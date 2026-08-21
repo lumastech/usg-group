@@ -195,7 +195,11 @@ it('shows the queue and disburses from it, but only to the treasurer', function 
 
     $this->get(route('app.loans.queue'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('app/loans/Queue')->where('committed_ngwee', 1_000_000));
+        ->assertInertia(fn ($page) => $page
+            ->component('app/loans/Queue')
+            ->has('queue', 1)
+            ->where('queue.0.id', $loan->id)
+            ->where('committed_ngwee', 1_000_000));
 
     $this->post(route('app.loans.disburse', $loan))->assertRedirect();
 
@@ -293,6 +297,19 @@ it('shows a member their own loan and lets them ask for one', function () {
     ])->assertRedirect();
 
     expect(Loan::query()->where('member_id', $this->borrower->id)->count())->toBe(1);
+});
+
+it('lists a member their settled and rejected loans as a flat history', function () {
+    $rejected = app(LoanApplicationService::class)->reject(($this->requested)(), $this->chair, 'Asked for too much.');
+
+    $this->actingAs($this->borrower->user);
+
+    $this->get(route('my.loan'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('my/Loan')
+            ->has('history', 1)
+            ->where('history.0.id', $rejected->id));
 });
 
 it('will not let a member request a loan in somebody else than their own name', function () {

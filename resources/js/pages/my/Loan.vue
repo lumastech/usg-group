@@ -41,7 +41,7 @@ const props = defineProps<{
     loan: Loan | null;
     schedule: LoanScheduleItem[];
     ledger: LoanTransaction[];
-    history: { data: Loan[] };
+    history: Loan[];
     eligibility: LoanEligibility | null;
     rules: LoanRules | null;
 }>();
@@ -265,13 +265,13 @@ function submit(): void {
             </template>
 
             <AppCard
-                v-if="history.data.length > 0"
+                v-if="history.length > 0"
                 title="Your loan history"
                 flush
             >
                 <ul class="divide-y divide-border">
                     <li
-                        v-for="past in history.data"
+                        v-for="past in history"
                         :key="past.id"
                         class="flex items-center justify-between gap-3 px-4 py-3 text-sm"
                     >
