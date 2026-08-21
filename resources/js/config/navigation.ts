@@ -180,6 +180,12 @@ export const adminNavigation: NavSection[] = [
                 icon: FileUp,
                 permissions: ['cycles.manage'],
             },
+            {
+                title: 'Audit',
+                href: '/app/audit',
+                icon: ShieldCheck,
+                permissions: ['audit.view'],
+            },
         ],
     },
 ];

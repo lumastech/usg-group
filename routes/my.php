@@ -5,6 +5,7 @@ use App\Http\Controllers\My\DeclarationController;
 use App\Http\Controllers\My\LoanController;
 use App\Http\Controllers\My\ProfileController;
 use App\Http\Controllers\My\SavingsController;
+use App\Http\Controllers\My\SettingsController;
 use App\Http\Controllers\My\SocialFundController;
 use Illuminate\Support\Facades\Route;
 
@@ -51,4 +52,11 @@ Route::middleware(['auth', 'verified'])->prefix('my')->name('my.')->group(functi
 
     Route::get('profile', [ProfileController::class, 'show'])->name('profile');
     Route::put('profile/{member}', [ProfileController::class, 'update'])->name('profile.update');
+
+    /*
+     * How the member wants to be reached. Guarded by the same policy as their contact
+     * details — the channel and the number it delivers to are one decision.
+     */
+    Route::get('settings', [SettingsController::class, 'show'])->name('settings');
+    Route::put('settings/{member}', [SettingsController::class, 'update'])->name('settings.update');
 });

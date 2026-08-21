@@ -4,10 +4,12 @@ Before planning or editing, find the row whose globs match the file's path and r
 
 | Applies to | Rule file |
 | --- | --- |
+| app/Notifications/** | .ai/rules/app-notifications.md |
 | app/Domain/Approvals/** | .ai/rules/approvals.md |
 | app/Http/Controllers/** | .ai/rules/controllers.md |
 | app/Domain/Declarations/** | .ai/rules/declarations.md |
 | app/Domain/** | .ai/rules/domain.md |
+| app/Events/** | .ai/rules/events.md |
 | app/Domain/Governance/** | .ai/rules/governance.md |
 | app/Domain/Import/** | .ai/rules/import.md |
 | app/Listeners/** | .ai/rules/listeners.md |
@@ -15,6 +17,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Domain/Members/** | .ai/rules/members.md |
 | database/migrations/** | .ai/rules/migrations.md |
 | app/Models/**, app/Models/CommitteeTerm.php | .ai/rules/models.md |
+| app/Domain/Notifications/** | .ai/rules/notifications.md |
 | app/Domain/Payouts/** | .ai/rules/payouts.md |
 | app/Domain/Reporting/** | .ai/rules/reporting.md |
 | app/Http/Resources/** | .ai/rules/resources.md |

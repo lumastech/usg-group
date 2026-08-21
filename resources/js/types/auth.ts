@@ -55,6 +55,7 @@ export type PermissionName =
     | 'payouts.execute'
     | 'governance.record'
     | 'reports.view'
+    | 'audit.view'
     | 'cycles.manage';
 
 /** Where in the month we are. Drives the dashboard banner and form availability. */

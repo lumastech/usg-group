@@ -15,3 +15,6 @@ The one exception is `confirmDisbursement`: money physically leaves the table th
 `scheduled_conclude_date` is copied onto the session when it opens, already weekend-adjusted. Penalty days are computed against that copy so a concluded session cannot be re-dated by a later change to the cycle's weekend policy.
 
 `openFor()` is idempotent and re-syncs expected figures while preserving anything the treasurer already marked — that is what lets a late declaration appear on the sheet without a rebuild.
+
+## Equal amounts on the trading sheet are not member-to-member matching
+Asked and answered (2026-08-21): the workbook's Trading sheet sometimes shows two members at the same figure (e.g. both at K30,000). That is a coincidence of the pooled ledger — money goes into one pool and out again, and equal figures are just the same loan amount on both sides. There is no pairing to model: do not build a matching feature into the trading console.

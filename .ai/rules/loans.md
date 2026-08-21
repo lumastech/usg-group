@@ -27,3 +27,6 @@ Every repayment stores its split across `penalty_portion_ngwee` / `interest_port
 It is run twice per loan: at request, and again inside `LoanDisbursementQueue::disburse()` (passing `ignoring: $loan`), because savings, status and other loans all move in the days between.
 
 The one-loan-at-a-time rule bends to a committee `discretion_override` with a written note. The lockdown (`Cycle::isLockdownMonth`, September onward) does not — `overriding: true` still returns the `lockdown` reason. Do not add an escape hatch for it.
+
+## Interest is 5%/month reducing balance, confirmed against the constitution
+Asked and answered (2026-08-21): the constitution has one line reading like a flat 5% at disbursement, but the group's actual practice — and the ruling — is the workbook behaviour InterestEngine implements: 5% a month on principal still outstanding, so the charge falls as the loan is repaid. Do not "fix" this toward a one-off charge.

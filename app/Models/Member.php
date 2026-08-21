@@ -6,6 +6,7 @@ use App\Casts\MoneyCast;
 use App\Enums\ExpulsionGround;
 use App\Enums\MemberRole;
 use App\Enums\MemberStatus;
+use App\Enums\NotificationChannel;
 use App\Models\Concerns\BelongsToCycle;
 use Brick\Money\Money;
 use Database\Factories\MemberFactory;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
@@ -32,6 +34,7 @@ use Spatie\Activitylog\Support\LogOptions;
  * @property string|null $nrc_number
  * @property string|null $physical_address
  * @property string|null $phone
+ * @property NotificationChannel $notification_channel
  * @property bool $is_diaspora
  * @property MemberStatus $status
  * @property Carbon|null $status_effective_on
@@ -47,14 +50,26 @@ use Spatie\Activitylog\Support\LogOptions;
  */
 #[Fillable([
     'cycle_id', 'user_id', 'member_number', 'full_name', 'nrc_number', 'physical_address',
-    'phone', 'is_diaspora', 'status', 'status_effective_on', 'status_changed_at',
+    'phone', 'notification_channel', 'is_diaspora', 'status', 'status_effective_on', 'status_changed_at',
     'status_reason', 'expulsion_ground', 'date_of_death', 'ledgers_frozen_at', 'joined_on',
     'joining_month_sequence', 'joining_fee_ngwee', 'joining_fee_paid',
 ])]
 class Member extends Model
 {
     /** @use HasFactory<MemberFactory> */
-    use BelongsToCycle, HasFactory, LogsActivity;
+    use BelongsToCycle, HasFactory, LogsActivity, Notifiable;
+
+    /**
+     * Defaults mirrored from the migration.
+     *
+     * Eloquent does not know a database default, so without this a member created in
+     * this request reads back a null channel until it is refreshed.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'notification_channel' => NotificationChannel::Mail->value,
+    ];
 
     /** @return HasMany<SavingsTransaction, $this> */
     public function savingsTransactions(): HasMany
@@ -177,10 +192,33 @@ class Member extends Model
         return LogOptions::defaults()->logFillable()->logOnlyDirty()->dontLogEmptyChanges();
     }
 
+    /**
+     * Where this member's email goes.
+     *
+     * The address belongs to the portal login, not to the member record, so a member
+     * the group has never invited has no mail route and is reached by SMS alone.
+     */
+    public function routeNotificationForMail(): ?string
+    {
+        return $this->user?->email;
+    }
+
+    /**
+     * Where this member's texts go.
+     *
+     * The phone number is on the member record rather than the login, which is what
+     * lets the group text somebody who has never signed in.
+     */
+    public function routeNotificationForSms(): ?string
+    {
+        return $this->phone;
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {
         return [
+            'notification_channel' => NotificationChannel::class,
             'is_diaspora' => 'boolean',
             'status' => MemberStatus::class,
             'status_effective_on' => 'date',

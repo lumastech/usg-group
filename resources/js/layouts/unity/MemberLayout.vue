@@ -7,7 +7,7 @@
  * Bottom-nav items come from the same permission-filtered config as the sidebar.
  */
 import { Head, Link } from '@inertiajs/vue3';
-import { LogOut } from '@lucide/vue';
+import { LogOut, Settings } from '@lucide/vue';
 
 import { Toast } from '@/components/unity';
 import { useNavigation } from '@/composables/useNavigation';
@@ -61,6 +61,17 @@ const { user, currentCycle } = usePermissions();
                 </Link>
 
                 <PortalSwitcher tone="dark" />
+
+                <!-- Notification preferences live off the header rather than the
+                     bottom nav: a sixth thumb target would crowd the five sections
+                     members actually use every month. -->
+                <Link
+                    href="/my/settings"
+                    class="grid size-9 shrink-0 place-items-center rounded-lg text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent"
+                    aria-label="Settings"
+                >
+                    <Settings class="size-4" />
+                </Link>
 
                 <Link
                     href="/logout"

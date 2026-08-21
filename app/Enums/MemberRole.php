@@ -73,6 +73,10 @@ enum MemberRole: string
                 Permission::PayoutsApprove,
                 Permission::GovernanceRecord,
                 Permission::ReportsView,
+                // The chair holds the group to account, so the audit trail is theirs
+                // to read. The vice deputises for the chair in every other duty and
+                // does here too.
+                Permission::AuditView,
                 Permission::SavingsView,
                 Permission::DeclarationsView,
                 Permission::DeclarationsSubmitOwn,

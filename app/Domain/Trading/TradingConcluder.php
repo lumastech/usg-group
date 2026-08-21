@@ -13,6 +13,7 @@ use App\Enums\DeclarationStatus;
 use App\Enums\LoanScheduleItemStatus;
 use App\Enums\LoanStatus;
 use App\Enums\TradingSessionStatus;
+use App\Events\TradingSessionConcluded;
 use App\Exceptions\DomainRuleException;
 use App\Exceptions\TradingSessionClosedException;
 use App\Models\CycleMonth;
@@ -112,7 +113,7 @@ class TradingConcluder
 
         $month = $session->cycleMonth;
 
-        return DB::transaction(function () use ($session, $month, $actor): TradingSession {
+        $session = DB::transaction(function () use ($session, $month, $actor): TradingSession {
             $previous = $month->cycle->monthAt($month->sequence - 1);
 
             if ($previous !== null) {
@@ -149,6 +150,15 @@ class TradingConcluder
 
             return $session->refresh();
         });
+
+        /*
+         * Raised after the commit, never inside it. The statement pack listener renders
+         * a PDF for every member off the back of this, and that work has no business
+         * holding the transaction that owns the month's ledger rows.
+         */
+        TradingSessionConcluded::dispatch($session, $actor);
+
+        return $session;
     }
 
     /**

@@ -217,6 +217,16 @@ export type NextOfKinRelationship = (typeof NextOfKinRelationship)[keyof typeof 
 
 export const nextOfKinRelationshipValues: readonly NextOfKinRelationship[] = ['spouse', 'parent', 'sibling', 'child', 'other'];
 
+export const NotificationChannel = {
+    Mail: 'mail',
+    Sms: 'sms',
+    Both: 'both',
+} as const;
+
+export type NotificationChannel = (typeof NotificationChannel)[keyof typeof NotificationChannel];
+
+export const notificationChannelValues: readonly NotificationChannel[] = ['mail', 'sms', 'both'];
+
 export const PayoutCase = {
     ActiveShareOut: 'active_share_out',
     LeftEarly: 'left_early',
@@ -262,12 +272,13 @@ export const Permission = {
     PayoutsExecute: 'payouts.execute',
     GovernanceRecord: 'governance.record',
     ReportsView: 'reports.view',
+    AuditView: 'audit.view',
     CyclesManage: 'cycles.manage',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
 
-export const permissionValues: readonly Permission[] = ['members.view', 'members.manage', 'savings.view', 'savings.record', 'declarations.view', 'declarations.submit-own', 'declarations.record', 'trading.operate', 'loans.view', 'loans.request', 'loans.approve', 'loans.disburse', 'loans.record-repayment', 'fund.view', 'fund.record', 'fund.approve-outflow', 'payouts.approve', 'payouts.execute', 'governance.record', 'reports.view', 'cycles.manage'];
+export const permissionValues: readonly Permission[] = ['members.view', 'members.manage', 'savings.view', 'savings.record', 'declarations.view', 'declarations.submit-own', 'declarations.record', 'trading.operate', 'loans.view', 'loans.request', 'loans.approve', 'loans.disburse', 'loans.record-repayment', 'fund.view', 'fund.record', 'fund.approve-outflow', 'payouts.approve', 'payouts.execute', 'governance.record', 'reports.view', 'audit.view', 'cycles.manage'];
 
 export const SavingsTransactionType = {
     Contribution: 'contribution',

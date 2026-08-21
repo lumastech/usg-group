@@ -40,6 +40,8 @@ enum Permission: string
 
     case ReportsView = 'reports.view';
 
+    case AuditView = 'audit.view';
+
     case CyclesManage = 'cycles.manage';
 
     /** @return array<int, string> */
@@ -77,6 +79,7 @@ enum Permission: string
             self::PayoutsExecute => 'Execute payouts',
             self::GovernanceRecord => 'Record governance decisions',
             self::ReportsView => 'View reports',
+            self::AuditView => 'Review the audit trail',
             self::CyclesManage => 'Manage cycles',
         };
     }

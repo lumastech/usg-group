@@ -6,6 +6,7 @@ use App\Enums\LoanScheduleItemStatus;
 use App\Enums\LoanStatus;
 use App\Enums\LoanTransactionType;
 use App\Events\LatePenaltyCharged;
+use App\Events\MissedInstallmentPenaltyCharged;
 use App\Models\CycleMonth;
 use App\Models\Loan;
 use App\Models\LoanScheduleItem;
@@ -125,7 +126,7 @@ class PenaltyService
             return null;
         }
 
-        return $this->ledger->post(
+        $transaction = $this->ledger->post(
             $loan,
             LoanTransactionType::MissedInstallmentPenalty,
             Kwacha::ofNgwee($penalty),
@@ -135,5 +136,14 @@ class PenaltyService
             notes: ($paid > 0 ? 'Partially paid' : 'Missed').' installment for '.$month->label()
                 .': 10% of '.Kwacha::format($outstanding).' outstanding',
         );
+
+        /*
+         * Its own event, not LatePenaltyCharged: this penalty stays with the lending
+         * pool while the daily one is mirrored into the Social Fund, and the fund's
+         * reconciliation depends on the two never being confused for each other.
+         */
+        MissedInstallmentPenaltyCharged::dispatch($loan, $transaction, $month);
+
+        return $transaction;
     }
 }

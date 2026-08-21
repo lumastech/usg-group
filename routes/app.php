@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\App\AmendmentController;
+use App\Http\Controllers\App\AuditController;
 use App\Http\Controllers\App\ClosureController;
 use App\Http\Controllers\App\ClosureExecutionController;
 use App\Http\Controllers\App\CollateralClaimController;
@@ -268,6 +269,16 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
         Route::post('import', [WorkbookImportController::class, 'import'])->name('import.store');
         Route::delete('import', [WorkbookImportController::class, 'destroy'])->name('import.destroy');
     });
+
+    /*
+     * The audit trail. Read-only, and deliberately not gated on `reports.view`: the
+     * reports are the group's figures, this is who produced them. `audit.view` sits
+     * with the chair, whose office is to hold the committee to account — including
+     * the treasurer whose entries make up most of the log.
+     */
+    Route::get('audit', AuditController::class)
+        ->middleware('permission:audit.view')
+        ->name('audit');
 
     /*
      * Governance. Who holds office, what the group met about and how it voted is read

@@ -7,6 +7,7 @@ use App\Actions\Fortify\ResetUserPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -32,6 +33,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureActions();
         $this->configureViews();
         $this->configureRateLimiting();
+        $this->throttlePasswordResets();
     }
 
     /**
@@ -77,6 +79,27 @@ class FortifyServiceProvider extends ServiceProvider
     }
 
     /**
+     * Throttle the password-reset routes Fortify registers without a limiter.
+     *
+     * Fortify exposes limiter config for login, two-factor and passkeys but not for
+     * the reset flow, and the routes belong to the package rather than to this
+     * application — so the middleware is appended once the package has registered
+     * them. Route middleware is read at dispatch, which is what makes this work.
+     */
+    private function throttlePasswordResets(): void
+    {
+        $this->app->booted(function (): void {
+            // Fortify names its routes fluently after registering them, so the
+            // collection's name lookup is stale until it is rebuilt.
+            Route::getRoutes()->refreshNameLookups();
+
+            foreach (['password.email', 'password.update'] as $name) {
+                Route::getRoutes()->getByName($name)?->middleware('throttle:password-reset');
+            }
+        });
+    }
+
+    /**
      * Configure rate limiting.
      */
     private function configureRateLimiting(): void
@@ -85,10 +108,33 @@ class FortifyServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($request->session()->get('login.id'));
         });
 
+        /*
+         * Two limits, not one. The per-minute limit stops somebody guessing at a
+         * single member's password; the hourly one is the lockout, and it is keyed on
+         * the address rather than the account so that working down the register — the
+         * whole group's emails are predictable from their names — runs out of attempts
+         * long before it runs out of members.
+         */
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
 
-            return Limit::perMinute(5)->by($throttleKey);
+            return [
+                Limit::perMinute(5)->by($throttleKey),
+                Limit::perHour(20)->by('login-ip|'.$request->ip()),
+            ];
+        });
+
+        /*
+         * Password resets carry a login link by email, so an unthrottled form is a way
+         * to bury a member's inbox — and to find out which addresses the group holds.
+         */
+        RateLimiter::for('password-reset', function (Request $request) {
+            $throttleKey = Str::transliterate(Str::lower((string) $request->input('email')).'|'.$request->ip());
+
+            return [
+                Limit::perMinutes(10, 3)->by($throttleKey),
+                Limit::perHour(10)->by('password-reset-ip|'.$request->ip()),
+            ];
         });
 
         RateLimiter::for('passkeys', function (Request $request) {

@@ -7,12 +7,15 @@ use App\Domain\Loans\LedgerInterestIncome;
 use App\Domain\Loans\LedgerOutstandingLoans;
 use App\Domain\Loans\MonthlyInterestIncome;
 use App\Domain\Loans\OutstandingLoanProvider;
+use App\Domain\Notifications\Sms\SmsGateway;
 use App\Domain\Payouts\NoRounding;
 use App\Domain\Payouts\RoundingPolicy;
+use App\Notifications\Channels\SmsChannel;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -41,6 +44,17 @@ class AppServiceProvider extends ServiceProvider
          * remainder posting to the Social Fund already carry the adjustment.
          */
         $this->app->bind(RoundingPolicy::class, NoRounding::class);
+
+        /*
+         * The SMS seam. Nothing in the application names a provider — notifications
+         * build an SmsMessage and the channel hands it to whatever is bound here, so
+         * signing up with Africa's Talking is a new class plus one config value. The
+         * default writes the message to the log, which keeps the whole preference and
+         * channel path exercised while the group has no account.
+         */
+        $this->app->bind(SmsGateway::class, fn ($app) => $app->make(
+            (string) config('notifications.sms.gateway'),
+        ));
     }
 
     /**
@@ -49,6 +63,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        Notification::extend('sms', fn ($app): SmsChannel => $app->make(SmsChannel::class));
     }
 
     /**
