@@ -12,6 +12,7 @@ import {
     ClipboardList,
     Coins,
     Handshake,
+    HeartHandshake,
     PiggyBank,
     TriangleAlert,
     Wallet,
@@ -26,6 +27,7 @@ import {
     WindowCountdown,
 } from '@/components/unity';
 import AdminLayout from '@/layouts/unity/AdminLayout.vue';
+import { formatMoney } from '@/lib/money';
 import type { DeclarationMonth } from '@/types/declarations';
 import type { TradingSessionStatus } from '@/types/enums';
 
@@ -67,18 +69,68 @@ interface Overview {
         month_savings: string;
         members_saved_this_month: number;
         ledger_started: boolean;
-        loans_outstanding: string | null;
-        social_fund_balance: string | null;
-        negative_net_value_members: number | null;
+        loans_outstanding?: string;
+        cash_position?: string;
+        cash_position_ngwee?: number;
+        social_fund_balance?: string;
+        social_fund_balance_ngwee?: number;
     };
-    lending: {
+    /** Present only when the user holds loans.view. */
+    lending?: {
         outstanding_ngwee: number;
         loans_running: number;
         queue_count: number;
         queue_ngwee: number;
         members_penalised_this_month: number;
     };
+    /** Present only when the user holds fund.view. */
+    fund?: {
+        balance_ngwee: number;
+        balance: string;
+        contributions_outstanding: number;
+    };
+    /** Present only when the user holds loans.view. */
+    target?: {
+        target_ngwee: number;
+        borrowed_ngwee: number;
+        shortfall_ngwee: number;
+        progress_percent: number;
+        members_at_target: number;
+        members_under_target: number;
+    };
+    /** Present only when the user holds loans.view. */
+    risk?: {
+        members: number;
+        shortfall_ngwee: number;
+        minimum_monthly_ngwee: number;
+        horizon_months: number;
+        worst: {
+            member_id: number;
+            full_name: string;
+            shortfall_ngwee: number;
+        }[];
+    };
+    /** Present only when the user holds reports.view. */
+    compliance?: {
+        unpaid_contributions: number;
+        unpaid_joining_fees: number;
+        late_declarations: number;
+        late_declarations_this_month: number;
+        declarations_submitted_this_month: number;
+        missed_installments: number;
+    };
 }
+
+/** Which widgets the server decided this user may see. */
+type Widgets = {
+    savings: boolean;
+    lending: boolean;
+    risk: boolean;
+    target: boolean;
+    fund: boolean;
+    compliance: boolean;
+    shareout: boolean;
+};
 
 interface MissingMember {
     id: number;
@@ -95,6 +147,7 @@ type MonthWindow = DeclarationMonth & {
 
 const props = defineProps<{
     overview: Overview | null;
+    widgets: Widgets;
     membersMissingSavings?: MissingMember[];
     monthWindow?: MonthWindow | null;
 }>();
@@ -338,28 +391,47 @@ const description = computed(() => {
                 </AppCard>
             </div>
 
+            <!-- Lending, the fund and the group's cash position. Each tile is
+                 rendered only when the server sent the section behind it. -->
             <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard
+                    v-if="widgets.lending && overview.lending"
                     label="Loans outstanding"
                     :ngwee="overview.lending.outstanding_ngwee"
                     :hint="`${overview.lending.loans_running} loans running`"
                     accent="brand"
                 />
                 <StatCard
+                    v-if="widgets.lending && overview.lending"
                     label="In the queue"
                     :ngwee="overview.lending.queue_ngwee"
                     :hint="`${overview.lending.queue_count} approved and awaiting the trading day`"
                 />
                 <StatCard
+                    v-if="widgets.lending && overview.money.cash_position"
+                    label="Cash position"
+                    :value="overview.money.cash_position"
+                    :icon="Wallet"
+                    hint="Savings and interest not currently out on loan"
+                />
+                <Link v-if="widgets.fund && overview.fund" href="/app/fund" class="block">
+                    <StatCard
+                        label="Social fund"
+                        :ngwee="overview.fund.balance_ngwee"
+                        :icon="HeartHandshake"
+                        :hint="
+                            overview.fund.contributions_outstanding > 0
+                                ? `${overview.fund.contributions_outstanding} contribution(s) unpaid`
+                                : 'Every member paid up'
+                        "
+                    />
+                </Link>
+                <StatCard
+                    v-if="widgets.lending && overview.lending"
                     label="Penalised this month"
                     :value="overview.lending.members_penalised_this_month"
                     :icon="TriangleAlert"
                     hint="Members charged a late or missed-installment penalty"
-                />
-                <StatCard
-                    label="Social fund"
-                    :value="overview.money.social_fund_balance ?? '—'"
-                    hint="Available once the fund module lands"
                 />
                 <StatCard
                     v-if="overview.month && !overview.month.registration_open"
@@ -368,6 +440,150 @@ const description = computed(() => {
                     hint="Registration closed after cycle month 3"
                 />
             </div>
+
+            <div class="grid gap-4 lg:grid-cols-3">
+                <!-- Members whose loans have outrun their savings, and what the next
+                     three months must bring in to put them level again. -->
+                <AppCard
+                    v-if="widgets.risk && overview.risk"
+                    title="Under water"
+                    :description="`Negative net value, with the minimum repayments over ${overview.risk.horizon_months} months at 5% a month`"
+                    class="lg:col-span-2"
+                >
+                    <div class="space-y-3">
+                        <div class="grid gap-3 sm:grid-cols-3">
+                            <div>
+                                <p class="text-xs uppercase text-muted-foreground">Members</p>
+                                <p class="tabular text-xl font-semibold">
+                                    {{ overview.risk.members }}
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-xs uppercase text-muted-foreground">Total shortfall</p>
+                                <p class="tabular text-xl font-semibold">
+                                    {{ formatMoney(overview.risk.shortfall_ngwee) }}
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-xs uppercase text-muted-foreground">Minimum first month</p>
+                                <p class="tabular text-xl font-semibold">
+                                    {{ formatMoney(overview.risk.minimum_monthly_ngwee) }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <ul v-if="overview.risk.worst.length" class="space-y-1">
+                            <li
+                                v-for="row in overview.risk.worst"
+                                :key="row.member_id"
+                                class="flex items-center justify-between gap-3 rounded px-2 py-1 text-sm odd:bg-muted/40"
+                            >
+                                <span class="truncate">{{ row.full_name }}</span>
+                                <span class="tabular shrink-0 font-medium">
+                                    {{ formatMoney(row.shortfall_ngwee) }}
+                                </span>
+                            </li>
+                        </ul>
+
+                        <p v-else class="text-sm text-muted-foreground">
+                            Every member's savings and interest cover what they owe.
+                        </p>
+
+                        <Link
+                            href="/app/risk"
+                            class="inline-block text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
+                        >
+                            Open the full projection
+                        </Link>
+                    </div>
+                </AppCard>
+
+                <!-- The K50,000 target. A goal the committee talks about, never a rule. -->
+                <AppCard
+                    v-if="widgets.target && overview.target"
+                    title="Borrowing target"
+                    description="The group's income is the interest its members pay"
+                >
+                    <div class="space-y-3">
+                        <div>
+                            <p class="tabular text-2xl font-semibold">
+                                {{ overview.target.progress_percent }}%
+                            </p>
+                            <p class="text-sm text-muted-foreground">
+                                {{ formatMoney(overview.target.borrowed_ngwee) }} of
+                                {{ formatMoney(overview.target.target_ngwee) }}
+                            </p>
+                        </div>
+
+                        <div class="h-2 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                                class="h-full rounded-full bg-brand-500"
+                                :style="{
+                                    width: `${Math.min(100, overview.target.progress_percent)}%`,
+                                }"
+                            />
+                        </div>
+
+                        <p class="text-sm text-muted-foreground">
+                            {{ overview.target.members_at_target }} at target ·
+                            {{ overview.target.members_under_target }} still short
+                        </p>
+
+                        <Link
+                            href="/app/loans/targets"
+                            class="inline-block text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
+                        >
+                            Per member
+                        </Link>
+                    </div>
+                </AppCard>
+            </div>
+
+            <!-- What the committee chases: dues unpaid, late declarations, missed
+                 installments. -->
+            <AppCard
+                v-if="widgets.compliance && overview.compliance"
+                title="Compliance"
+                description="What the committee is chasing this cycle"
+            >
+                <dl class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                        <dt class="text-xs uppercase text-muted-foreground">
+                            Unpaid contributions
+                        </dt>
+                        <dd class="tabular text-xl font-semibold">
+                            {{ overview.compliance.unpaid_contributions }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs uppercase text-muted-foreground">
+                            Unpaid joining fees
+                        </dt>
+                        <dd class="tabular text-xl font-semibold">
+                            {{ overview.compliance.unpaid_joining_fees }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs uppercase text-muted-foreground">
+                            Late declarations
+                        </dt>
+                        <dd class="tabular text-xl font-semibold">
+                            {{ overview.compliance.late_declarations }}
+                        </dd>
+                        <p class="text-xs text-muted-foreground">
+                            {{ overview.compliance.late_declarations_this_month }} this month
+                        </p>
+                    </div>
+                    <div>
+                        <dt class="text-xs uppercase text-muted-foreground">
+                            Missed installments
+                        </dt>
+                        <dd class="tabular text-xl font-semibold">
+                            {{ overview.compliance.missed_installments }}
+                        </dd>
+                    </div>
+                </dl>
+            </AppCard>
         </div>
     </AdminLayout>
 </template>

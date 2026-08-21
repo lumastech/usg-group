@@ -2,13 +2,20 @@
 
 namespace App\Domain\Reporting;
 
+use App\Domain\Loans\BorrowingTargetTracker;
+use App\Domain\SocialFund\SocialFundContributions;
+use App\Domain\SocialFund\SocialFundLedger;
+use App\Enums\DeclarationStatus;
+use App\Enums\LoanScheduleItemStatus;
 use App\Enums\LoanStatus;
 use App\Enums\LoanTransactionType;
 use App\Enums\MemberStatus;
 use App\Models\Cycle;
 use App\Models\CycleMonth;
+use App\Models\Declaration;
 use App\Models\InterestAllocation;
 use App\Models\Loan;
+use App\Models\LoanScheduleItem;
 use App\Models\LoanTransaction;
 use App\Models\Member;
 use App\Models\SavingsTransaction;
@@ -19,12 +26,24 @@ use Illuminate\Support\Carbon;
 /**
  * Group-wide figures for the administration dashboard.
  *
- * Social fund totals are still reported as null until module 4 lands, so the dashboard
- * can show "not yet tracked" rather than a misleading zero. Lending is real from module
- * 3 onwards and reads straight off the loan ledger.
+ * Every module's numbers are read here, off the ledgers rather than off the cached
+ * snapshots, so the dashboard is right on the trading day even when a rebuild is
+ * overdue — and so the dashboard and the reports agree by construction.
+ *
+ * The sections are deliberately separable. The dashboard renders a widget only when
+ * the signed-in user holds the permission that owns it, and the controller asks for
+ * just those sections, so a signatory without `loans.view` never has lending figures
+ * sent to their browser in the first place.
  */
 class CycleOverview
 {
+    public function __construct(
+        protected SocialFundLedger $fund,
+        protected SocialFundContributions $contributions,
+        protected BorrowingTargetTracker $targets,
+        protected NegativeNetValueProjection $risk,
+    ) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -39,6 +58,10 @@ class CycleOverview
             'members' => $this->memberSummary($cycle),
             'money' => $this->moneySummary($cycle, $currentMonth),
             'lending' => $this->lendingSummary($cycle, $currentMonth),
+            'fund' => $this->fundSummary($cycle),
+            'target' => $this->targetSummary($cycle),
+            'risk' => $this->riskSummary($cycle),
+            'compliance' => $this->complianceSummary($cycle, $currentMonth),
         ];
     }
 
@@ -131,6 +154,9 @@ class CycleOverview
             ->where('cycle_month_id', $month->id)
             ->sum('amount_ngwee');
 
+        $fundBalance = Kwacha::toNgwee($this->fund->balance($cycle));
+        $cashPosition = $totalSavings + $totalInterest - $this->outstandingLoansNgwee($cycle);
+
         $savedThisMonth = $month === null ? 0 : SavingsTransaction::query()
             ->whereIn('member_id', $memberIds)
             ->where('cycle_month_id', $month->id)
@@ -147,14 +173,118 @@ class CycleOverview
 
             'loans_outstanding' => Kwacha::format($this->outstandingLoansNgwee($cycle)),
 
-            // Awaiting the social fund module.
-            'social_fund_balance' => null,
-            'negative_net_value_members' => null,
+            'social_fund_balance' => Kwacha::format($fundBalance),
+            'social_fund_balance_ngwee' => $fundBalance,
+
+            /* What the group is not currently holding out on loan. The Social Fund is
+               reported beside it rather than inside it: that money is the group's, for
+               bereavements and celebrations, and was never part of anyone's savings. */
+            'cash_position' => Kwacha::format($cashPosition),
+            'cash_position_ngwee' => $cashPosition,
         ];
     }
 
     /**
-     * What the fund has lent out, what it is about to lend, and who is behind.
+     * The Social Fund: what it holds, and who has not yet paid into it.
+     *
+     * @return array<string, mixed>
+     */
+    protected function fundSummary(Cycle $cycle): array
+    {
+        $balance = Kwacha::toNgwee($this->fund->balance($cycle));
+        $outstanding = $this->contributions->outstanding($cycle);
+
+        return [
+            'balance_ngwee' => $balance,
+            'balance' => Kwacha::format($balance),
+            'contributions_outstanding' => $outstanding->count(),
+        ];
+    }
+
+    /**
+     * Progress against the K50,000 each member is meant to borrow across the cycle.
+     *
+     * The target is a goal the committee talks about, never a rule — the group's income
+     * is the interest its members pay, so a cycle where nobody borrows earns nobody
+     * anything. Falling short of it blocks nothing.
+     *
+     * @return array<string, mixed>
+     */
+    protected function targetSummary(Cycle $cycle): array
+    {
+        $rows = $this->targets->for($cycle);
+        $borrowed = (int) $rows->sum('borrowed_ngwee');
+        $target = (int) $rows->sum('target_ngwee');
+
+        return [
+            'target_ngwee' => $target,
+            'borrowed_ngwee' => $borrowed,
+            'shortfall_ngwee' => max(0, $target - $borrowed),
+            'progress_percent' => $target === 0 ? 100 : (int) round($borrowed / $target * 100),
+            'members_at_target' => $rows->reject(fn (array $row): bool => $row['under_target'])->count(),
+            'members_under_target' => $rows->filter(fn (array $row): bool => $row['under_target'])->count(),
+        ];
+    }
+
+    /**
+     * Members whose loans have outrun their savings.
+     *
+     * A count and a total only. The full month-by-month catch-up plan lives on /app/risk,
+     * because working it out for thirty members is not what the dashboard is opened for.
+     *
+     * @return array<string, mixed>
+     */
+    protected function riskSummary(Cycle $cycle): array
+    {
+        $projection = $this->risk->for($cycle);
+
+        return [
+            'members' => $projection['totals']['members'],
+            'shortfall_ngwee' => $projection['totals']['shortfall_ngwee'],
+            'minimum_monthly_ngwee' => $projection['totals']['minimum_monthly_ngwee'],
+            'horizon_months' => $projection['horizon_months'],
+            /* The three worst, so the tile can name somebody rather than only count. */
+            'worst' => array_slice($projection['rows'], 0, 3),
+        ];
+    }
+
+    /**
+     * What the committee chases: dues unpaid, declarations that came in late, and
+     * installments the schedule says were missed.
+     *
+     * @return array<string, mixed>
+     */
+    protected function complianceSummary(Cycle $cycle, ?CycleMonth $month): array
+    {
+        $monthIds = $cycle->months()->pluck('id');
+
+        return [
+            'unpaid_contributions' => $this->contributions->outstanding($cycle)->count(),
+            'unpaid_joining_fees' => $cycle->members()->where('joining_fee_paid', false)->count(),
+            'late_declarations' => (int) Declaration::query()
+                ->acrossCycles()
+                ->whereIn('cycle_month_id', $monthIds)
+                ->where('is_late', true)
+                ->count(),
+            'late_declarations_this_month' => $month === null ? 0 : (int) Declaration::query()
+                ->acrossCycles()
+                ->where('cycle_month_id', $month->id)
+                ->where('is_late', true)
+                ->count(),
+            'declarations_submitted_this_month' => $month === null ? 0 : (int) Declaration::query()
+                ->acrossCycles()
+                ->where('cycle_month_id', $month->id)
+                ->where('status', DeclarationStatus::Submitted->value)
+                ->count(),
+            'missed_installments' => (int) LoanScheduleItem::query()
+                ->join('loans', 'loans.id', '=', 'loan_schedule_items.loan_id')
+                ->where('loans.cycle_id', $cycle->id)
+                ->where('loan_schedule_items.status', LoanScheduleItemStatus::Missed->value)
+                ->count(),
+        ];
+    }
+
+    /** What the fund has lent out, what it is about to lend, and who is behind.
      *
      * Every figure is read off the loan ledger rather than the cached snapshots, so the
      * dashboard is right on the trading day even when a rebuild is overdue.

@@ -27,10 +27,16 @@ use App\Http\Controllers\App\MemberInviteController;
 use App\Http\Controllers\App\MemberStatusController;
 use App\Http\Controllers\App\MotionController;
 use App\Http\Controllers\App\PayoutVoucherController;
+use App\Http\Controllers\App\ReportsController;
+use App\Http\Controllers\App\RiskController;
 use App\Http\Controllers\App\SavingsController;
 use App\Http\Controllers\App\SavingsDepositController;
 use App\Http\Controllers\App\SavingsExportController;
 use App\Http\Controllers\App\SavingsStatementController;
+use App\Http\Controllers\App\ShareOutBatchController;
+use App\Http\Controllers\App\ShareOutController;
+use App\Http\Controllers\App\ShareOutExportController;
+use App\Http\Controllers\App\ShareOutPreflightController;
 use App\Http\Controllers\App\SocialFundContributionController;
 use App\Http\Controllers\App\SocialFundController;
 use App\Http\Controllers\App\SocialFundExportController;
@@ -41,6 +47,7 @@ use App\Http\Controllers\App\TradingController;
 use App\Http\Controllers\App\TradingEntryController;
 use App\Http\Controllers\App\TradingSessionController;
 use App\Http\Controllers\App\UnityBabyClaimController;
+use App\Http\Controllers\App\WorkbookImportController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -215,6 +222,52 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
     Route::post('closures/{member}', ClosureExecutionController::class)
         ->middleware('permission:payouts.execute')
         ->name('closures.execute');
+
+    /*
+     * Share-out. The checklist and the sheet are read by anyone who may read the
+     * group's figures — both are read out in the room — while the two transitions
+     * belong to `cycles.manage` and the batch runner to `payouts.execute`. Overriding
+     * a dirty checklist additionally carries a second signature checked inside the
+     * domain, and the checklist is re-run there rather than trusted from the screen.
+     */
+    Route::get('shareout', ShareOutController::class)->name('shareout.index');
+    Route::get('shareout/preflight', [ShareOutPreflightController::class, 'index'])->name('shareout.preflight');
+    Route::get('shareout/export/{format}', ShareOutExportController::class)
+        ->whereIn('format', ['xlsx', 'pdf'])
+        ->name('shareout.export');
+    Route::get('shareout/schedule', [ShareOutBatchController::class, 'schedule'])->name('shareout.schedule');
+
+    Route::middleware('permission:cycles.manage')->group(function () {
+        Route::post('shareout/close', [ShareOutPreflightController::class, 'close'])->name('shareout.close');
+        Route::post('shareout/open', [ShareOutPreflightController::class, 'store'])->name('shareout.open');
+    });
+
+    Route::post('shareout/batch', [ShareOutBatchController::class, 'store'])
+        ->middleware('permission:payouts.execute')
+        ->name('shareout.batch');
+
+    /*
+     * The reports hub and the risk page. Both only read, and each card in the hub is
+     * filtered by the permission the download route behind it already enforces.
+     */
+    Route::get('reports', [ReportsController::class, 'index'])->name('reports.index');
+    Route::post('reports/statement-pack', [ReportsController::class, 'store'])
+        ->middleware('permission:reports.view')
+        ->name('reports.statement-pack');
+
+    Route::get('risk', RiskController::class)->name('risk');
+
+    /*
+     * The workbook import. Upload and dry run are one act, confirming is another, and
+     * both belong to `cycles.manage` — an import writes into every ledger the group
+     * keeps, so it is held to the permission that owns the cycle itself.
+     */
+    Route::middleware('permission:cycles.manage')->group(function () {
+        Route::get('import', [WorkbookImportController::class, 'index'])->name('import.index');
+        Route::post('import/upload', [WorkbookImportController::class, 'store'])->name('import.upload');
+        Route::post('import', [WorkbookImportController::class, 'import'])->name('import.store');
+        Route::delete('import', [WorkbookImportController::class, 'destroy'])->name('import.destroy');
+    });
 
     /*
      * Governance. Who holds office, what the group met about and how it voted is read

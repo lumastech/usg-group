@@ -134,7 +134,36 @@ it('defers the chase list and loads it on a partial reload', function () {
         ->assertJsonPath('props.membersMissingSavings.0.full_name', 'Still Owing');
 });
 
-it('reports lending from the loan ledger and the social fund as not yet tracked', function () {
+it('reports lending from the loan ledger and the fund from its own ledger', function () {
+    Carbon::setTestNow('2026-08-19');
+    $this->seed(RoleSeeder::class);
+
+    $cycle = Cycle::factory()->create();
+    app(CycleMonthPlanner::class)->plan($cycle);
+
+    $user = User::factory()->create();
+    $user->assignRole(MemberRole::Treasurer->value);
+
+    $this->actingAs($user);
+
+    $this->get(route('app.dashboard'))->assertInertia(fn ($page) => $page
+        ->where('overview.money.loans_outstanding', 'K0.00')
+        ->where('overview.money.social_fund_balance', 'K0.00')
+        ->where('overview.lending.outstanding_ngwee', 0)
+        ->where('overview.lending.queue_count', 0)
+        ->where('overview.lending.members_penalised_this_month', 0)
+        ->where('overview.fund.balance_ngwee', 0)
+        ->where('overview.risk.members', 0)
+        ->where('overview.target.progress_percent', 100)
+        ->where('overview.compliance.missed_installments', 0)
+    );
+});
+
+/*
+ * Widget permissions are enforced on the server, not merely in the template: a user
+ * without loans.view never has the lending figures put into their page props.
+ */
+it('withholds the sections a user holds no permission for', function () {
     Carbon::setTestNow('2026-08-19');
 
     $cycle = Cycle::factory()->create();
@@ -143,11 +172,17 @@ it('reports lending from the loan ledger and the social fund as not yet tracked'
     $this->actingAs(User::factory()->create());
 
     $this->get(route('app.dashboard'))->assertInertia(fn ($page) => $page
-        ->where('overview.money.loans_outstanding', 'K0.00')
-        ->where('overview.money.social_fund_balance', null)
-        ->where('overview.lending.outstanding_ngwee', 0)
-        ->where('overview.lending.queue_count', 0)
-        ->where('overview.lending.members_penalised_this_month', 0)
+        ->where('widgets.lending', false)
+        ->where('widgets.fund', false)
+        ->where('widgets.compliance', false)
+        ->missing('overview.lending')
+        ->missing('overview.fund')
+        ->missing('overview.risk')
+        ->missing('overview.target')
+        ->missing('overview.compliance')
+        ->missing('overview.money.loans_outstanding')
+        ->missing('overview.money.social_fund_balance')
+        ->etc()
     );
 });
 
