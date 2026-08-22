@@ -1,10 +1,12 @@
 <?php
 
+use App\Domain\Payments\PaymentGateway;
 use App\Enums\MemberRole;
 use App\Models\Cycle;
 use App\Models\Member;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\FakePaymentGateway;
 use Tests\TestCase;
 
 /*
@@ -66,4 +68,19 @@ function memberWithRole(
         ->for($cycle)
         ->create($attributes + ['user_id' => $user->id])
         ->load('user');
+}
+
+/**
+ * Swaps the payment gateway for one that moves nothing and answers to order.
+ *
+ * Tests about what settled money does to the ledgers should not also be tests about
+ * HTTP; the wire format has its own tests against Http::fake().
+ */
+function fakeGateway(): FakePaymentGateway
+{
+    $gateway = new FakePaymentGateway;
+
+    app()->instance(PaymentGateway::class, $gateway);
+
+    return $gateway;
 }

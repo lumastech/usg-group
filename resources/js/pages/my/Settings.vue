@@ -6,8 +6,8 @@
  * picks SMS with no number on record is told the group will email them instead,
  * because that is what the server does rather than dropping the message.
  */
-import { useForm } from '@inertiajs/vue3';
-import { Mail, MessageSquare } from '@lucide/vue';
+import { Link, useForm } from '@inertiajs/vue3';
+import { Mail, MessageSquare, Smartphone, Wallet } from '@lucide/vue';
 
 import {
     AppButton,
@@ -96,6 +96,27 @@ function submit(): void {
                         </AppButton>
                     </div>
                 </form>
+            </AppCard>
+
+            <AppCard
+                title="Money"
+                description="Paying what you owe, and saying where your share-out should be sent."
+                class="mt-4"
+            >
+                <div class="grid gap-2 sm:grid-cols-2">
+                    <Link href="/my/payments" class="block">
+                        <AppButton block variant="outline">
+                            <template #icon><Smartphone class="size-4" /></template>
+                            Pay from this phone
+                        </AppButton>
+                    </Link>
+                    <Link href="/my/destinations" class="block">
+                        <AppButton block variant="outline">
+                            <template #icon><Wallet class="size-4" /></template>
+                            Where my money goes
+                        </AppButton>
+                    </Link>
+                </div>
             </AppCard>
 
             <AppCard title="Where things go now" class="mt-4">

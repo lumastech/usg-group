@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Domain\Cycles\CurrentCycle;
 use App\Domain\Declarations\DeclarationWindow;
+use App\Domain\Payments\PaymentGateway;
 use App\Models\Cycle;
 use App\Models\CycleMonth;
 use App\Models\Member;
@@ -56,6 +57,14 @@ class HandleInertiaRequests extends Middleware
                 'user' => fn (): ?array => $this->user($request->user()),
             ],
             'currentCycle' => fn (): ?array => $this->cycle(),
+
+            /*
+             * What the browser needs to open the provider's hosted payment widget: the
+             * public key and the script URL, and nothing else. The API token — which
+             * moves money out of the group's account — never leaves the server. Null
+             * when no gateway is configured, which is what the pay buttons check.
+             */
+            'payments' => fn (): ?array => $this->paymentWidget(),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
@@ -64,6 +73,14 @@ class HandleInertiaRequests extends Middleware
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
+    }
+
+    /**
+     * @return array{key: string, script: string, channels: array<int, string>}|null
+     */
+    protected function paymentWidget(): ?array
+    {
+        return app(PaymentGateway::class)->widgetConfig();
     }
 
     /**

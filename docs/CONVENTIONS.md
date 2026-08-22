@@ -79,6 +79,30 @@ Ledger rows are never edited or deleted. A correction is a **reversing entry** t
 points at the original. This is a constitutional requirement, not a preference — the
 group must be able to reconstruct any month from the ledger alone.
 
+### External money
+
+Moving money through a payment provider is **not** a ledger operation, and the two are
+kept apart on purpose.
+
+- `App\Domain\Payments\PaymentGateway` is the only thing the application talks to.
+  Nothing outside `App\Domain\Payments\Lenco` may name a provider, read a provider
+  status string, or see a decimal amount. The default binding is `NullPaymentGateway`,
+  which moves nothing and logs what it would have moved — the same bargain as
+  `SmsGateway`.
+- A `payment_intents` row records what the provider was asked to do and what it said
+  happened. It is not a ledger and never becomes one.
+- **A webhook, a poll and a browser callback may only mark an intent as settled.**
+  Posting to a ledger happens in one place — `PaymentPoster` — from a queued job,
+  claimed with a conditional `UPDATE` so a webhook and a poll racing each other cannot
+  post the same money twice.
+- `PaymentPoster` calls the same domain services a cash payment goes through, so an
+  online K750 contribution is refused by `InvalidSavingsAmountException` exactly as one
+  handed across the table would be. Money the ledgers refuse is parked at
+  `NeedsAttention` with the ledger's own words on it, never retried on its own.
+- Anything date-sensitive uses the **provider's** timestamp, not ours. A repayment made
+  at 23:50 on the 7th and processed on the 8th is allocated on the 7th; anything else
+  charges the member a late penalty for the depth of our queue.
+
 ---
 
 ## 3. Cycles

@@ -107,6 +107,33 @@ class Member extends Model
         return $this->hasMany(NextOfKin::class);
     }
 
+    /** @return HasMany<PayoutDestination, $this> */
+    public function payoutDestinations(): HasMany
+    {
+        return $this->hasMany(PayoutDestination::class);
+    }
+
+    /**
+     * Where this member is paid, unless the committee is told otherwise.
+     *
+     * A member with nothing here is paid the way they always were — in cash across the
+     * table — so the absence of a destination is a normal state, not a broken one.
+     *
+     * @return HasOne<PayoutDestination, $this>
+     */
+    public function defaultPayoutDestination(): HasOne
+    {
+        return $this->hasOne(PayoutDestination::class)
+            ->where('is_default', true)
+            ->whereNull('disabled_at');
+    }
+
+    /** @return HasMany<PaymentIntent, $this> */
+    public function paymentIntents(): HasMany
+    {
+        return $this->hasMany(PaymentIntent::class);
+    }
+
     /** @return HasOne<Payout, $this> */
     public function payout(): HasOne
     {

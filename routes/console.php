@@ -56,3 +56,32 @@ Schedule::command('unity:backup-database')
     ->dailyAt('01:30')
     ->timezone('Africa/Lusaka')
     ->withoutOverlapping();
+
+/*
+|--------------------------------------------------------------------------
+| Payments
+|--------------------------------------------------------------------------
+|
+| Webhooks are the fast path and not the reliable one — the provider's own
+| documentation says to re-query — so every payment still in flight is asked
+| about on a short cycle. The same pass takes up money the ledgers could not
+| accept when it arrived: savings paid outside a trading window wait at Settled
+| and go onto the sheet the first run after a session opens.
+|
+*/
+
+Schedule::command('unity:poll-payments')
+    ->everyFiveMinutes()
+    ->timezone('Africa/Lusaka')
+    ->withoutOverlapping();
+
+/*
+| The daily comparison of the provider's record against ours. Runs after the
+| night's collections have settled, so a payment made late on the 7th is judged
+| against a settled balance rather than an in-flight one.
+*/
+
+Schedule::command('unity:reconcile-payments')
+    ->dailyAt('02:30')
+    ->timezone('Africa/Lusaka')
+    ->withoutOverlapping();

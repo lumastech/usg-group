@@ -4,6 +4,9 @@ namespace App\Http\Controllers\App;
 
 use App\Domain\Cycles\CurrentCycle;
 use App\Domain\Loans\LoanDisbursementQueue;
+use App\Domain\Payments\PayoutDestinationService;
+use App\Domain\Payments\TransferInitiator;
+use App\Enums\Permission;
 use App\Exceptions\DomainRuleException;
 use App\Exceptions\LoanNotEligibleException;
 use App\Http\Controllers\Controller;
@@ -14,6 +17,7 @@ use App\Support\Kwacha;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,7 +30,10 @@ use Inertia\Response;
  */
 class LoanDisbursementController extends Controller
 {
-    public function __construct(protected LoanDisbursementQueue $queue) {}
+    public function __construct(
+        protected LoanDisbursementQueue $queue,
+        protected TransferInitiator $transfers,
+    ) {}
 
     public function index(Request $request, CurrentCycle $currentCycle): Response
     {
@@ -46,7 +53,43 @@ class LoanDisbursementController extends Controller
                 'is_trading_day' => $month->disbursement_on->isSameDay(Carbon::today()),
             ],
             'committed_ngwee' => $pending->sum(fn (Loan $loan): int => Kwacha::toNgwee($loan->principal_ngwee)),
+
+            /*
+             * Where each member has asked to be paid, so the queue can offer to send the
+             * money as well as hand it over. A member with nothing here is paid in cash,
+             * which stays the normal path for anybody without a wallet.
+             */
+            'destinations' => $this->destinationsFor($request, $pending),
         ]);
+    }
+
+    /**
+     * @param  Collection<int, Loan>  $loans
+     * @return array<int, array{label: string, needs_second_signature: bool}>
+     */
+    protected function destinationsFor(Request $request, $loans): array
+    {
+        if (! $request->user()->can(Permission::PaymentsInitiate->value)) {
+            return [];
+        }
+
+        $destinations = [];
+
+        foreach ($loans as $loan) {
+            $destination = $loan->member === null ? null : $this->transfers->destinationFor($loan->member);
+
+            if ($destination === null) {
+                continue;
+            }
+
+            $destinations[$loan->id] = [
+                'label' => $destination->label(),
+                'needs_second_signature' => app(PayoutDestinationService::class)
+                    ->needsSecondSignature($destination),
+            ];
+        }
+
+        return $destinations;
     }
 
     public function store(DisburseLoanRequest $request, Loan $loan, CurrentCycle $currentCycle): RedirectResponse

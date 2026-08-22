@@ -3,6 +3,8 @@
 use App\Http\Controllers\My\DashboardController;
 use App\Http\Controllers\My\DeclarationController;
 use App\Http\Controllers\My\LoanController;
+use App\Http\Controllers\My\PaymentController;
+use App\Http\Controllers\My\PayoutDestinationController;
 use App\Http\Controllers\My\ProfileController;
 use App\Http\Controllers\My\SavingsController;
 use App\Http\Controllers\My\SettingsController;
@@ -49,6 +51,26 @@ Route::middleware(['auth', 'verified'])->prefix('my')->name('my.')->group(functi
     Route::get('fund', [SocialFundController::class, 'show'])->name('fund');
     Route::post('fund/claims/funeral', [SocialFundController::class, 'storeFuneralClaim'])->name('fund.claims.funeral');
     Route::post('fund/claims/baby', [SocialFundController::class, 'storeBabyClaim'])->name('fund.claims.baby');
+
+    /*
+     * Paying what you owe, from your own phone. No permission is checked, in keeping
+     * with the rest of /my — the route is scoped to the signed-in member's own record,
+     * and paying your dues is not something the constitution restricts.
+     */
+    Route::get('payments', [PaymentController::class, 'index'])->name('payments');
+    Route::post('payments', [PaymentController::class, 'store'])->name('payments.store');
+    Route::post('payments/{intent}/verify', [PaymentController::class, 'verify'])->name('payments.verify');
+
+    /*
+     * Where the member's money is sent. Guarded by the same policy as their contact
+     * details — the account and the number it reaches are one decision.
+     */
+    Route::get('destinations', [PayoutDestinationController::class, 'index'])->name('destinations');
+    Route::post('destinations', [PayoutDestinationController::class, 'store'])->name('destinations.store');
+    Route::put('destinations/{destination}/default', [PayoutDestinationController::class, 'makeDefault'])
+        ->name('destinations.default');
+    Route::delete('destinations/{destination}', [PayoutDestinationController::class, 'destroy'])
+        ->name('destinations.destroy');
 
     Route::get('profile', [ProfileController::class, 'show'])->name('profile');
     Route::put('profile/{member}', [ProfileController::class, 'update'])->name('profile.update');

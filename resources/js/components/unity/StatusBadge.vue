@@ -34,6 +34,8 @@ const TONES: Record<Tone, string[]> = {
         'settled',
         'complete',
         'completed',
+        'posted',
+        'successful',
     ],
     warning: [
         'pending',
@@ -43,6 +45,7 @@ const TONES: Record<Tone, string[]> = {
         'due',
         'late',
         'in_arrears',
+        'awaiting-authorization',
     ],
     danger: [
         'rejected',
@@ -52,8 +55,10 @@ const TONES: Record<Tone, string[]> = {
         'suspended',
         'exited',
         'written_off',
+        'failed',
+        'needs-attention',
     ],
-    info: ['draft', 'planned', 'closing', 'review', 'submitted'],
+    info: ['draft', 'planned', 'closing', 'review', 'submitted', 'abandoned'],
     brand: ['closed', 'shareout', 'share_out'],
     neutral: [],
 };

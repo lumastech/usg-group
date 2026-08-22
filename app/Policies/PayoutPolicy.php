@@ -33,6 +33,24 @@ class PayoutPolicy
         return $this->viewAny($user) || $payout->member->user_id === $user->id;
     }
 
+    /**
+     * Whether this user may send an already-executed payout to the member.
+     *
+     * Deliberately not `execute`: the closure was signed, frozen and recorded long
+     * before any money moved, and handing it over is a different act with a different
+     * gate. A payout already paid cannot be paid again.
+     */
+    public function pay(User $user, Payout $payout): bool
+    {
+        return $user->can(Permission::PayoutsExecute->value) && ! $payout->isPaid();
+    }
+
+    /** Whether this user may run the whole share-out payment schedule. */
+    public function payAny(User $user): bool
+    {
+        return $user->can(Permission::PayoutsExecute->value);
+    }
+
     /** Whether this user could execute the closure of this member, right now. */
     public function execute(User $user, Member $member): bool
     {

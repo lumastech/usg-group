@@ -12,6 +12,7 @@ use App\Http\Resources\TradingEntryResource;
 use App\Models\Cycle;
 use App\Models\CycleMonth;
 use App\Models\Member;
+use App\Models\PaymentIntent;
 use App\Models\TradingSession;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -88,6 +89,14 @@ class TradingController extends Controller
             'abilities' => [
                 'operate' => $request->user()->can('operate', TradingSession::class),
                 'conclude' => $session !== null && $request->user()->can('conclude', $session),
+
+                /*
+                 * Whether the treasurer may push a payment prompt to a member's handset
+                 * instead of taking cash. False when nobody has wired a gateway up, so
+                 * the button simply is not there rather than failing on the day.
+                 */
+                'requestPayment' => $request->user()->can('initiate', PaymentIntent::class)
+                    && config('payments.default') !== 'null',
             ],
         ]);
     }

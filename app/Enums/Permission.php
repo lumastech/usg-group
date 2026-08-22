@@ -36,6 +36,11 @@ enum Permission: string
     case PayoutsApprove = 'payouts.approve';
     case PayoutsExecute = 'payouts.execute';
 
+    case PaymentsView = 'payments.view';
+    case PaymentsInitiate = 'payments.initiate';
+    case PaymentsRetry = 'payments.retry';
+    case PaymentsReconcile = 'payments.reconcile';
+
     case GovernanceRecord = 'governance.record';
 
     case ReportsView = 'reports.view';
@@ -77,6 +82,10 @@ enum Permission: string
             self::FundApproveOutflow => 'Approve fund outflows',
             self::PayoutsApprove => 'Approve payouts',
             self::PayoutsExecute => 'Execute payouts',
+            self::PaymentsView => 'View payments',
+            self::PaymentsInitiate => 'Initiate payments',
+            self::PaymentsRetry => 'Retry failed payments',
+            self::PaymentsReconcile => 'Reconcile payments',
             self::GovernanceRecord => 'Record governance decisions',
             self::ReportsView => 'View reports',
             self::AuditView => 'Review the audit trail',

@@ -21,6 +21,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        /*
+         * The payment provider posts without a session or a token. Its signature is
+         * what authenticates it, checked in LencoWebhookController.
+         */
+        $middleware->validateCsrfTokens(except: ['webhooks/lenco']);
+
         $middleware->alias([
             'permission' => PermissionMiddleware::class,
             'role' => RoleMiddleware::class,

@@ -71,6 +71,9 @@ enum MemberRole: string
                 Permission::FundView,
                 Permission::FundApproveOutflow,
                 Permission::PayoutsApprove,
+                // Oversight only: the chair watches the money move but does not push
+                // it. Initiating and retrying belong to the treasury.
+                Permission::PaymentsView,
                 Permission::GovernanceRecord,
                 Permission::ReportsView,
                 // The chair holds the group to account, so the audit trail is theirs
@@ -98,6 +101,10 @@ enum MemberRole: string
                 Permission::DeclarationsSubmitOwn,
                 Permission::DeclarationsRecord,
                 Permission::TradingOperate,
+                Permission::PaymentsView,
+                Permission::PaymentsInitiate,
+                Permission::PaymentsRetry,
+                Permission::PaymentsReconcile,
                 Permission::ReportsView,
             ],
 

@@ -13,6 +13,7 @@ import {
     CheckCircle2,
     Clock,
     Lock,
+    Smartphone,
     Undo2,
     Wallet,
 } from '@lucide/vue';
@@ -52,7 +53,11 @@ const props = defineProps<{
     preview: TradingPreview | null;
     missing: { id: number; member_number: number; full_name: string }[];
     filters?: { month: number | null };
-    abilities: { operate: boolean; conclude: boolean };
+    abilities: {
+        operate: boolean;
+        conclude: boolean;
+        requestPayment: boolean;
+    };
 }>();
 
 /** Resources arrive unwrapped as a bare array for a plain collection. */
@@ -61,6 +66,40 @@ const rows = computed<TradingEntry[]>(() =>
 );
 
 const receiving = ref<TradingEntry | null>(null);
+const requesting = ref<TradingEntry | null>(null);
+
+/**
+ * Asking a member's handset for the money instead of taking it across the table.
+ *
+ * Nothing is marked received here — the sheet updates itself when the provider
+ * confirms the member approved it, which is the only moment the money is real.
+ */
+const requestForm = useForm({
+    member_id: 0,
+    purpose: 'savings_contribution',
+    amount_ngwee: null as number | null,
+    cycle_month_id: null as number | null,
+    phone: '',
+});
+
+function openRequest(entry: TradingEntry): void {
+    requestForm.clearErrors();
+    requestForm.member_id = entry.member_id;
+    requestForm.amount_ngwee = entry.expected_in_ngwee;
+    requestForm.cycle_month_id = props.month?.id ?? null;
+    requestForm.phone = '';
+    requesting.value = entry;
+}
+
+function sendRequest(): void {
+    requestForm.post('/app/payments/request', {
+        preserveScroll: true,
+        onSuccess: () => {
+            requesting.value = null;
+            requestForm.reset();
+        },
+    });
+}
 const disbursing = ref<TradingEntry | null>(null);
 const concludeOpen = ref(false);
 
@@ -422,6 +461,22 @@ function conclude(): void {
                                                 class="flex justify-end gap-1.5"
                                             >
                                                 <AppButton
+                                                    v-if="
+                                                        abilities.requestPayment &&
+                                                        !entry.is_received
+                                                    "
+                                                    size="sm"
+                                                    variant="outline"
+                                                    aria-label="Ask this member's phone for the money"
+                                                    @click="openRequest(entry)"
+                                                >
+                                                    <template #icon
+                                                        ><Smartphone
+                                                            class="size-4"
+                                                    /></template>
+                                                    Ask
+                                                </AppButton>
+                                                <AppButton
                                                     v-if="canMark"
                                                     size="sm"
                                                     :variant="
@@ -629,6 +684,61 @@ function conclude(): void {
         </div>
 
         <ClientOnly>
+            <Modal
+                :open="requesting !== null"
+                title="Ask this member's phone for the money"
+                :description="`${requesting?.member_name ?? ''} will get a prompt on their handset. Nothing is marked received until they approve it.`"
+                @close="requesting = null"
+            >
+                <div class="space-y-4">
+                    <FormField
+                        label="Amount"
+                        :error="requestForm.errors.amount_ngwee"
+                    >
+                        <template #default="{ id, invalid }">
+                            <MoneyInput
+                                :id="id"
+                                v-model="requestForm.amount_ngwee"
+                                :invalid="invalid"
+                            />
+                        </template>
+                    </FormField>
+
+                    <FormField
+                        label="Number to ask"
+                        hint="Leave blank to use the number on their record."
+                        :error="requestForm.errors.phone"
+                    >
+                        <template #default="{ id, invalid }">
+                            <TextInput
+                                :id="id"
+                                v-model="requestForm.phone"
+                                :invalid="invalid"
+                                inputmode="tel"
+                                placeholder="0977 000 000"
+                            />
+                        </template>
+                    </FormField>
+
+                    <p class="text-xs text-muted-foreground">
+                        The provider's fee is added to what the member pays, so
+                        the group receives the round figure.
+                    </p>
+                </div>
+
+                <template #footer>
+                    <AppButton variant="ghost" @click="requesting = null">
+                        Cancel
+                    </AppButton>
+                    <AppButton
+                        :loading="requestForm.processing"
+                        @click="sendRequest"
+                    >
+                        Send the prompt
+                    </AppButton>
+                </template>
+            </Modal>
+
             <Modal
                 :open="receiving !== null"
                 title="Mark money received"

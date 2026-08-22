@@ -8,6 +8,9 @@ use App\Domain\Loans\LedgerOutstandingLoans;
 use App\Domain\Loans\MonthlyInterestIncome;
 use App\Domain\Loans\OutstandingLoanProvider;
 use App\Domain\Notifications\Sms\SmsGateway;
+use App\Domain\Payments\Lenco\LencoGateway;
+use App\Domain\Payments\NullPaymentGateway;
+use App\Domain\Payments\PaymentGateway;
 use App\Domain\Payouts\NoRounding;
 use App\Domain\Payouts\RoundingPolicy;
 use App\Notifications\Channels\SmsChannel;
@@ -55,6 +58,18 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SmsGateway::class, fn ($app) => $app->make(
             (string) config('notifications.sms.gateway'),
         ));
+
+        /*
+         * The payment seam, and the same bargain as the SMS one: nothing above
+         * App\Domain\Payments names a provider. The default moves no money and writes
+         * what it would have moved to the log, so intents, the state machine, the
+         * poller and every posting rule are exercised before the group holds a Lenco
+         * account. PAYMENT_GATEWAY=lenco is the whole switch-over.
+         */
+        $this->app->bind(PaymentGateway::class, fn ($app): PaymentGateway => match (config('payments.default')) {
+            'lenco' => $app->make(LencoGateway::class),
+            default => $app->make(NullPaymentGateway::class),
+        });
     }
 
     /**

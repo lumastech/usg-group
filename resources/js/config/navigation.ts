@@ -13,7 +13,9 @@ import {
     PiggyBank,
     Scale,
     ScrollText,
+    ScanLine,
     ShieldCheck,
+    Smartphone,
     TrendingDown,
     Users,
     Vote,
@@ -126,6 +128,23 @@ export const adminNavigation: NavSection[] = [
                 href: '/app/risk',
                 icon: TrendingDown,
                 permissions: ['loans.view'],
+            },
+        ],
+    },
+    {
+        label: 'Payments',
+        items: [
+            {
+                title: 'Payments',
+                href: '/app/payments',
+                icon: Smartphone,
+                permissions: ['payments.view'],
+            },
+            {
+                title: 'Reconciliation',
+                href: '/app/payments/reconciliation',
+                icon: ScanLine,
+                permissions: ['payments.view'],
             },
         ],
     },

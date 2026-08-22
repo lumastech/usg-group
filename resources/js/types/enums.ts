@@ -93,6 +93,15 @@ export type ExpulsionGround = (typeof ExpulsionGround)[keyof typeof ExpulsionGro
 
 export const expulsionGroundValues: readonly ExpulsionGround[] = ['dishonesty', 'theft', 'unruly_behavior', 'loan_misconduct'];
 
+export const FeeBearer = {
+    Merchant: 'merchant',
+    Customer: 'customer',
+} as const;
+
+export type FeeBearer = (typeof FeeBearer)[keyof typeof FeeBearer];
+
+export const feeBearerValues: readonly FeeBearer[] = ['merchant', 'customer'];
+
 export const FuneralRelationship = {
     Parent: 'parent',
     Spouse: 'spouse',
@@ -195,6 +204,16 @@ export type MemberStatus = (typeof MemberStatus)[keyof typeof MemberStatus];
 
 export const memberStatusValues: readonly MemberStatus[] = ['active', 'left_early', 'expelled', 'deceased'];
 
+export const MobileMoneyOperator = {
+    Airtel: 'airtel',
+    Mtn: 'mtn',
+    Zamtel: 'zamtel',
+} as const;
+
+export type MobileMoneyOperator = (typeof MobileMoneyOperator)[keyof typeof MobileMoneyOperator];
+
+export const mobileMoneyOperatorValues: readonly MobileMoneyOperator[] = ['airtel', 'mtn', 'zamtel'];
+
 export const MotionType = {
     NoConfidence: 'no_confidence',
     Amendment: 'amendment',
@@ -227,6 +246,58 @@ export type NotificationChannel = (typeof NotificationChannel)[keyof typeof Noti
 
 export const notificationChannelValues: readonly NotificationChannel[] = ['mail', 'sms', 'both'];
 
+export const PaymentChannel = {
+    MobileMoney: 'mobile_money',
+    Card: 'card',
+    BankAccount: 'bank_account',
+} as const;
+
+export type PaymentChannel = (typeof PaymentChannel)[keyof typeof PaymentChannel];
+
+export const paymentChannelValues: readonly PaymentChannel[] = ['mobile_money', 'card', 'bank_account'];
+
+export const PaymentDirection = {
+    Collection: 'collection',
+    Transfer: 'transfer',
+} as const;
+
+export type PaymentDirection = (typeof PaymentDirection)[keyof typeof PaymentDirection];
+
+export const paymentDirectionValues: readonly PaymentDirection[] = ['collection', 'transfer'];
+
+export const PaymentPurpose = {
+    SavingsContribution: 'savings_contribution',
+    JoiningFee: 'joining_fee',
+    LoanRepayment: 'loan_repayment',
+    SocialFundContribution: 'social_fund_contribution',
+    LoanDisbursement: 'loan_disbursement',
+    Payout: 'payout',
+    ShareOut: 'share_out',
+    FuneralGrant: 'funeral_grant',
+    UnityBabyGrant: 'unity_baby_grant',
+    DiasporaApportionment: 'diaspora_apportionment',
+} as const;
+
+export type PaymentPurpose = (typeof PaymentPurpose)[keyof typeof PaymentPurpose];
+
+export const paymentPurposeValues: readonly PaymentPurpose[] = ['savings_contribution', 'joining_fee', 'loan_repayment', 'social_fund_contribution', 'loan_disbursement', 'payout', 'share_out', 'funeral_grant', 'unity_baby_grant', 'diaspora_apportionment'];
+
+export const PaymentStatus = {
+    Draft: 'draft',
+    Pending: 'pending',
+    AwaitingAuthorization: 'awaiting-authorization',
+    Successful: 'successful',
+    Settled: 'settled',
+    Posted: 'posted',
+    Failed: 'failed',
+    Abandoned: 'abandoned',
+    NeedsAttention: 'needs-attention',
+} as const;
+
+export type PaymentStatus = (typeof PaymentStatus)[keyof typeof PaymentStatus];
+
+export const paymentStatusValues: readonly PaymentStatus[] = ['draft', 'pending', 'awaiting-authorization', 'successful', 'settled', 'posted', 'failed', 'abandoned', 'needs-attention'];
+
 export const PayoutCase = {
     ActiveShareOut: 'active_share_out',
     LeftEarly: 'left_early',
@@ -237,6 +308,15 @@ export const PayoutCase = {
 export type PayoutCase = (typeof PayoutCase)[keyof typeof PayoutCase];
 
 export const payoutCaseValues: readonly PayoutCase[] = ['active_share_out', 'left_early', 'expelled', 'deceased'];
+
+export const PayoutDestinationType = {
+    BankAccount: 'bank_account',
+    MobileMoney: 'mobile_money',
+} as const;
+
+export type PayoutDestinationType = (typeof PayoutDestinationType)[keyof typeof PayoutDestinationType];
+
+export const payoutDestinationTypeValues: readonly PayoutDestinationType[] = ['bank_account', 'mobile_money'];
 
 export const PayoutLineKind = {
     Credit: 'credit',
@@ -270,6 +350,10 @@ export const Permission = {
     FundApproveOutflow: 'fund.approve-outflow',
     PayoutsApprove: 'payouts.approve',
     PayoutsExecute: 'payouts.execute',
+    PaymentsView: 'payments.view',
+    PaymentsInitiate: 'payments.initiate',
+    PaymentsRetry: 'payments.retry',
+    PaymentsReconcile: 'payments.reconcile',
     GovernanceRecord: 'governance.record',
     ReportsView: 'reports.view',
     AuditView: 'audit.view',
@@ -278,7 +362,7 @@ export const Permission = {
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
 
-export const permissionValues: readonly Permission[] = ['members.view', 'members.manage', 'savings.view', 'savings.record', 'declarations.view', 'declarations.submit-own', 'declarations.record', 'trading.operate', 'loans.view', 'loans.request', 'loans.approve', 'loans.disburse', 'loans.record-repayment', 'fund.view', 'fund.record', 'fund.approve-outflow', 'payouts.approve', 'payouts.execute', 'governance.record', 'reports.view', 'audit.view', 'cycles.manage'];
+export const permissionValues: readonly Permission[] = ['members.view', 'members.manage', 'savings.view', 'savings.record', 'declarations.view', 'declarations.submit-own', 'declarations.record', 'trading.operate', 'loans.view', 'loans.request', 'loans.approve', 'loans.disburse', 'loans.record-repayment', 'fund.view', 'fund.record', 'fund.approve-outflow', 'payouts.approve', 'payouts.execute', 'payments.view', 'payments.initiate', 'payments.retry', 'payments.reconcile', 'governance.record', 'reports.view', 'audit.view', 'cycles.manage'];
 
 export const SavingsTransactionType = {
     Contribution: 'contribution',
@@ -349,11 +433,12 @@ export const TransactionSource = {
     Trading: 'trading',
     Import: 'import',
     System: 'system',
+    Gateway: 'gateway',
 } as const;
 
 export type TransactionSource = (typeof TransactionSource)[keyof typeof TransactionSource];
 
-export const transactionSourceValues: readonly TransactionSource[] = ['manual', 'trading', 'import', 'system'];
+export const transactionSourceValues: readonly TransactionSource[] = ['manual', 'trading', 'import', 'system', 'gateway'];
 
 export const WeekendTradingPolicy = {
     NextMonday: 'next_monday',

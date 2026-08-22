@@ -34,13 +34,16 @@ use Spatie\Activitylog\Support\LogOptions;
  * @property Carbon|null $executed_at
  * @property int|null $executed_by_member_id
  * @property int|null $second_approver_member_id
+ * @property Carbon|null $paid_at
+ * @property string|null $paid_method
+ * @property int|null $payment_intent_id
  * @property string|null $early_settlement_note
  * @property string|null $note
  */
 #[Fillable([
     'cycle_id', 'member_id', 'case', 'breakdown', 'net_value_ngwee', 'round_off_ngwee',
     'amount_ngwee', 'executed_at', 'executed_by_member_id', 'second_approver_member_id',
-    'early_settlement_note', 'note',
+    'paid_at', 'paid_method', 'payment_intent_id', 'early_settlement_note', 'note',
 ])]
 #[UsePolicy(PayoutPolicy::class)]
 class Payout extends Model
@@ -52,6 +55,17 @@ class Payout extends Model
     public function member(): BelongsTo
     {
         return $this->belongsTo(Member::class);
+    }
+
+    /**
+     * The transfer that put the money in the member's hands, if it was sent rather
+     * than handed over.
+     *
+     * @return BelongsTo<PaymentIntent, $this>
+     */
+    public function paymentIntent(): BelongsTo
+    {
+        return $this->belongsTo(PaymentIntent::class);
     }
 
     /** @return BelongsTo<Member, $this> */
@@ -77,6 +91,12 @@ class Payout extends Model
         return LogOptions::defaults()->logFillable()->logOnlyDirty()->dontLogEmptyChanges();
     }
 
+    /** Whether the money has actually reached the member yet. */
+    public function isPaid(): bool
+    {
+        return $this->paid_at !== null;
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {
@@ -87,6 +107,7 @@ class Payout extends Model
             'round_off_ngwee' => MoneyCast::class,
             'amount_ngwee' => MoneyCast::class,
             'executed_at' => 'datetime',
+            'paid_at' => 'datetime',
         ];
     }
 }

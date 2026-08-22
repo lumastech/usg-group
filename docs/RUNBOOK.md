@@ -148,6 +148,10 @@ what they must pay on each remaining trading day to clear it by 7 November.
 | `unity:reconcile-social-fund` | monthly | Asserts loan-side penalties and fund inflows agree. |
 | `unity:sync-committee-roles` | after an import or restore | Reconciles portal roles from `committee_terms`. |
 | `unity:import-workbook` | once, at migration | Imports the group's spreadsheet as history. |
+| `unity:poll-payments` | every 5 min, scheduled | Asks the provider about payments in flight, and posts any that settled. |
+| `unity:poll-payments --force` | any time | Asks about every payment in flight regardless of when it was last asked. |
+| `unity:reconcile-payments` | daily 02:30, scheduled | Compares the provider's record of money moved against this system's. |
+| `unity:lenco-smoke` | before go-live | Drives the provider's sandbox accounts end to end. Refuses to run outside a sandbox. |
 
 The scheduler must actually be running for any of the daily ones to happen:
 
@@ -172,3 +176,69 @@ be reached at all. Give them a number or invite them at `/app/members`.
 
 **The month posted half way.** It cannot have. Concluding is one transaction. If the
 console shows a session still open, nothing was posted; run it again.
+
+**A member says they paid but nothing shows.** `/app/payments`, search their name.
+A payment sitting at *Awaiting authorisation* was never approved on their handset —
+nothing left their wallet. One at *Settled* has arrived and is waiting for the trading
+session to open before it can go on the sheet; it will land there on its own. One at
+*Needs attention* is money that moved and the ledgers refused, and it needs a decision
+from the committee — the reason is on the row.
+
+**Money moved and the ledgers do not have it.** That is what *Needs attention* is, and
+what the nightly `unity:reconcile-payments` catches when a webhook never arrived.
+`/app/payments/reconciliation` lists anything on one side and not the other. Nothing is
+ever fixed by editing a ledger — record it from the payments screen or set it aside.
+
+**A transfer's outcome is unknown.** After 24 hours an unanswered transfer is escalated
+to *Needs attention* rather than abandoned, because money may have left the account. Go
+and look at the Lenco dashboard before doing anything else; do not retry blind.
+
+**A member's share-out is going to the wrong account.** `/my/destinations` for them, or
+`/app/members/<id>`. Every change texts and emails the member on their existing
+contacts, and a destination changed in the last 48 hours cannot be paid to without a
+second committee signature — that is deliberate, not a fault.
+
+---
+
+## 6. Payments
+
+The group can take money in by mobile money and card, and send it out to a member's
+bank account or wallet, through Lenco. None of it changes what the ledgers mean:
+concluding still posts the month, a payout is still signed by two people, and every
+entry is still immutable. See `docs/LENCO-PAYMENTS-PLAN.md`.
+
+**Nothing calls out until it is switched on.** `PAYMENT_GATEWAY=null` is the default:
+every screen works and what would have moved is written to the log. Going live is
+`PAYMENT_GATEWAY=lenco` plus the four Lenco values in the environment.
+
+**The API token moves money out of the group's account.** It lives in the server
+environment and nowhere else — not in version control, not in a message, never shared
+to the browser. If it is ever exposed, mail support@lenco.co and have it rotated the
+same day. Only the *public* key reaches the browser, and only so the card widget can
+open.
+
+**Who bears the fee.** The member does, on money coming in — so a K500 contribution
+reaches the savings ledger as exactly K500. On money going out the fee is the group's
+and is never taken off what a member is owed.
+
+**On trading day.** Each row on the sheet has an **Ask** button beside **Mark
+received**: it sends a prompt to the member's handset and the row fills itself in when
+they approve it. Cash across the table works exactly as before. A member who has not
+declared cannot be asked — there is no row for the money to land on.
+
+**Disbursement day.** The queue offers **Send** as well as **Hand over**. A sent loan
+stays *Approved* until the provider confirms the money left; nothing is posted until
+then, so a failed transfer leaves no trace of a loan the member never received.
+
+**Share-out day.** Settle the room on `/app/shareout` as before, then
+`/app/shareout/payments` to send the money. The group's balance at the provider is
+checked against the whole schedule first and the run refuses to start if it is short —
+top the account up, or pay the rest by hand. Anybody with no account on file is listed
+separately to be paid in cash.
+
+**The queue has to be running.** Webhooks and posting happen in queued jobs, so
+`QUEUE_CONNECTION` must not be `sync` in production and a worker has to be running:
+
+```
+php artisan queue:work --queue=default
+```

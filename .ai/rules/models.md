@@ -2,6 +2,7 @@
 paths:
   - 'app/Models/**'
   - app/Models/CommitteeTerm.php
+  - app/Models/PayoutDestination.php
 ---
 
 # Models
@@ -19,3 +20,13 @@ CommitteeRole (offices) is deliberately separate from MemberRole (permission bun
 TermEndReason::Removed is never accepted from a request. A removal is written by MotionRecorder when a no-confidence motion carries; EndCommitteeTermRequest rejects it.
 
 `unity:sync-committee-roles` reconciles roles from committee_terms after an import or restore — nothing in normal use needs it.
+
+## Changing where money is sent is the highest-value attack; four controls guard it
+Redirecting a payout needs no ledger tampering at all, so `PayoutDestinationService` is the only thing that may write this table, and it enforces:
+
+1. The provider is asked whose account it is (`/resolve/*`) BEFORE anything is saved. An unverifiable destination sitting in the list looking like the others is worse than none.
+2. The resolved name is scored against `members.full_name` by `AccountNameMatcher` (initials match the name they stand for; titles are stripped). A low score does not block — maiden names and spouses' wallets are ordinary here — but it is stored, shown in red at the point of signing, and a member may never clear their own.
+3. A destination added or changed inside `payments.transfers.destination_cooling_off_hours` (48h) needs a second committee signature. This is what defeats "take over the login, change the number, wait for share-out".
+4. Every change dispatches `PayoutDestinationChanged`, which notifies the member on the contacts they had BEFORE the change.
+
+Uniqueness is on a sha1 `fingerprint`, not the columns: MySQL treats NULLs as distinct, so a composite index across the bank and wallet columns would let the same wallet be added twice on the strength of its empty bank half. One default per member is an application rule — MySQL has no partial unique index for it.

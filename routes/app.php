@@ -21,12 +21,19 @@ use App\Http\Controllers\App\LoanExportController;
 use App\Http\Controllers\App\LoanMatrixController;
 use App\Http\Controllers\App\LoanRepaymentController;
 use App\Http\Controllers\App\LoanTargetController;
+use App\Http\Controllers\App\LoanTransferController;
 use App\Http\Controllers\App\MeetingAttendanceController;
 use App\Http\Controllers\App\MeetingController;
 use App\Http\Controllers\App\MemberController;
 use App\Http\Controllers\App\MemberInviteController;
+use App\Http\Controllers\App\MemberPayoutDestinationController;
 use App\Http\Controllers\App\MemberStatusController;
 use App\Http\Controllers\App\MotionController;
+use App\Http\Controllers\App\PaymentActionController;
+use App\Http\Controllers\App\PaymentController;
+use App\Http\Controllers\App\PaymentReconciliationController;
+use App\Http\Controllers\App\PaymentRequestController;
+use App\Http\Controllers\App\PayoutTransferController;
 use App\Http\Controllers\App\PayoutVoucherController;
 use App\Http\Controllers\App\ReportsController;
 use App\Http\Controllers\App\RiskController;
@@ -37,6 +44,7 @@ use App\Http\Controllers\App\SavingsStatementController;
 use App\Http\Controllers\App\ShareOutBatchController;
 use App\Http\Controllers\App\ShareOutController;
 use App\Http\Controllers\App\ShareOutExportController;
+use App\Http\Controllers\App\ShareOutPaymentController;
 use App\Http\Controllers\App\ShareOutPreflightController;
 use App\Http\Controllers\App\SocialFundContributionController;
 use App\Http\Controllers\App\SocialFundController;
@@ -311,6 +319,52 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
             Route::post('amendments', [AmendmentController::class, 'store'])->name('amendments.store');
         });
     });
+
+    /*
+     * Payments. Watching the money move is `payments.view` — the chair holds the
+     * treasury to account and can see every payment — while pushing it is
+     * `payments.initiate`, retrying is `payments.retry` and the daily comparison
+     * against the provider's own record is `payments.reconcile`.
+     *
+     * None of these authorise anything: a transfer is the plumbing after a loan was
+     * approved or a payout signed, and each route additionally passes through the
+     * policy for the thing being paid.
+     */
+    Route::middleware('permission:payments.view')->group(function () {
+        Route::get('payments', PaymentController::class)->name('payments.index');
+        Route::get('payments/reconciliation', [PaymentReconciliationController::class, 'index'])
+            ->name('payments.reconciliation');
+        Route::post('payments/{intent}/refresh', [PaymentActionController::class, 'refresh'])
+            ->name('payments.refresh');
+    });
+
+    Route::post('payments/reconciliation', [PaymentReconciliationController::class, 'store'])
+        ->middleware('permission:payments.reconcile')
+        ->name('payments.reconciliation.store');
+
+    Route::middleware('permission:payments.retry')->group(function () {
+        Route::post('payments/{intent}/retry', [PaymentActionController::class, 'retry'])->name('payments.retry');
+        Route::post('payments/{intent}/resolve', [PaymentActionController::class, 'resolve'])->name('payments.resolve');
+    });
+
+    Route::middleware('permission:payments.initiate')->group(function () {
+        /* The treasurer asking a member's handset for money. */
+        Route::post('payments/request', PaymentRequestController::class)->name('payments.request');
+
+        /* Money going out. Each also passes the policy for the thing being paid. */
+        Route::post('loans/{loan}/send', LoanTransferController::class)->name('loans.send');
+        Route::post('payouts/{payout}/send', PayoutTransferController::class)->name('payouts.send');
+        Route::get('shareout/payments', [ShareOutPaymentController::class, 'show'])->name('shareout.payments');
+        Route::post('shareout/payments', [ShareOutPaymentController::class, 'store'])->name('shareout.payments.store');
+
+        Route::post('payment-destinations/{destination}/confirm-name', [MemberPayoutDestinationController::class, 'confirmName'])
+            ->name('payment-destinations.confirm-name');
+    });
+
+    /* Capturing a destination for the member who phones it in. */
+    Route::post('members/{member}/payment-destinations', [MemberPayoutDestinationController::class, 'store'])
+        ->middleware('permission:members.manage')
+        ->name('members.payment-destinations.store');
 
     /*
      * Approval, default and collateral all sit with the office that approves lending,

@@ -13,6 +13,7 @@ import {
     Coins,
     Download,
     FileText,
+    Send,
     TriangleAlert,
     UserMinus,
     Users,
@@ -201,6 +202,16 @@ function runBatch(payload: {
                 >
                     <FileText class="size-4" />
                     Payout schedule
+                </AppButton>
+
+                <AppButton
+                    v-if="abilities.runBatch"
+                    as="a"
+                    href="/app/shareout/payments"
+                    variant="secondary"
+                >
+                    <Send class="size-4" />
+                    Send the money
                 </AppButton>
 
                 <AppButton

@@ -6,14 +6,15 @@
  * and the buttons are worked top-down. Paying somebody out of turn is allowed, but the
  * dialog takes a typed reason first and that reason stays on their record.
  */
-import { Link, useForm } from '@inertiajs/vue3';
-import { Banknote, Clock, Users } from '@lucide/vue';
+import { Link, router, useForm } from '@inertiajs/vue3';
+import { Banknote, Clock, Send, Users } from '@lucide/vue';
 import { ref } from 'vue';
 
 import {
     AppButton,
     AppCard,
     ClientOnly,
+    ConfirmDialog,
     EmptyState,
     FormField,
     Modal,
@@ -33,7 +34,16 @@ const props = defineProps<{
         is_trading_day: boolean;
     } | null;
     committed_ngwee: number;
+    /** Keyed by loan id — only present for loans whose member has an account on file. */
+    destinations: Record<
+        number,
+        { label: string; needs_second_signature: boolean }
+    >;
 }>();
+
+const sending = ref<Loan | null>(null);
+const sendErrors = ref<Record<string, string>>({});
+const sendProcessing = ref(false);
 
 const jumping = ref<Loan | null>(null);
 
@@ -49,6 +59,37 @@ function disburse(loan: Loan, position: number): void {
 
     form.out_of_order_reason = '';
     form.post(`/app/loans/${loan.id}/disburse`, { preserveScroll: true });
+}
+
+/**
+ * Sends the money rather than handing it over.
+ *
+ * The loan stays Approved until the provider confirms the transfer left; the queue
+ * posts the disbursement then, re-checking eligibility as it always has.
+ */
+function send(payload: {
+    approver_email?: string;
+    approver_password?: string;
+}): void {
+    if (!sending.value) {
+        return;
+    }
+
+    sendProcessing.value = true;
+    sendErrors.value = {};
+
+    router.post(`/app/loans/${sending.value.id}/send`, payload, {
+        preserveScroll: true,
+        onError: (bag) => {
+            sendErrors.value = bag as Record<string, string>;
+        },
+        onSuccess: () => {
+            sending.value = null;
+        },
+        onFinish: () => {
+            sendProcessing.value = false;
+        },
+    });
 }
 
 function disburseOutOfOrder(): void {
@@ -145,21 +186,77 @@ function disburseOutOfOrder(): void {
                             {{ formatMoney(loan.principal_ngwee) }}
                         </span>
 
-                        <AppButton
-                            v-if="loan.abilities.disburse"
-                            size="sm"
-                            :variant="index === 0 ? 'primary' : 'outline'"
-                            :loading="form.processing"
-                            @click="disburse(loan, index + 1)"
-                        >
-                            {{ index === 0 ? 'Disburse' : 'Disburse early' }}
-                        </AppButton>
+                        <div class="flex shrink-0 flex-col items-end gap-1">
+                            <div class="flex gap-2">
+                                <AppButton
+                                    v-if="
+                                        loan.abilities.disburse &&
+                                        destinations[loan.id]
+                                    "
+                                    size="sm"
+                                    variant="outline"
+                                    @click="sending = loan"
+                                >
+                                    <template #icon
+                                        ><Send class="size-4"
+                                    /></template>
+                                    Send
+                                </AppButton>
+
+                                <AppButton
+                                    v-if="loan.abilities.disburse"
+                                    size="sm"
+                                    :variant="index === 0 ? 'primary' : 'outline'"
+                                    :loading="form.processing"
+                                    @click="disburse(loan, index + 1)"
+                                >
+                                    {{
+                                        index === 0
+                                            ? 'Hand over'
+                                            : 'Hand over early'
+                                    }}
+                                </AppButton>
+                            </div>
+
+                            <p
+                                v-if="destinations[loan.id]"
+                                class="text-xs text-muted-foreground"
+                            >
+                                {{ destinations[loan.id].label }}
+                            </p>
+                        </div>
                     </li>
                 </ol>
             </AppCard>
         </div>
 
         <ClientOnly>
+            <ConfirmDialog
+                :open="sending !== null"
+                :variant="
+                    sending && destinations[sending.id]?.needs_second_signature
+                        ? 'dual-approval'
+                        : 'default'
+                "
+                title="Send this loan to the member's account"
+                :message="
+                    sending
+                        ? `The loan stays approved until the provider confirms the money left. Nothing is posted until then.`
+                        : ''
+                "
+                :action-summary="
+                    sending
+                        ? `${formatMoney(sending.principal_ngwee)} to ${sending.member_name} · ${destinations[sending.id]?.label ?? ''}`
+                        : ''
+                "
+                confirm-label="Send it"
+                :errors="sendErrors"
+                :processing="sendProcessing"
+                @update:open="(value) => !value && (sending = null)"
+                @confirm="send"
+                @cancel="sending = null"
+            />
+
             <Modal
                 :open="jumping !== null"
                 title="Pay this loan out of turn"
