@@ -31,7 +31,7 @@ class PayoutDestinationController extends Controller
 
     public function index(Request $request, PaymentGateway $gateway): Response
     {
-        $member = $request->user()->member;
+        $member = $request->user()->actingMember();
 
         $this->authorize('viewAny', [PayoutDestination::class, $member]);
 
@@ -58,7 +58,7 @@ class PayoutDestinationController extends Controller
     public function store(StorePayoutDestinationRequest $request): RedirectResponse
     {
         $member = $request->member();
-        $actor = $request->user()->member;
+        $actor = $request->user()->actingMember();
 
         try {
             $destination = $request->type() === PayoutDestinationType::BankAccount
@@ -94,7 +94,7 @@ class PayoutDestinationController extends Controller
     {
         $this->authorize('update', $destination);
 
-        $this->destinations->makeDefault($destination, $request->user()->member);
+        $this->destinations->makeDefault($destination, $request->user()->actingMember());
 
         return back()->with('success', 'Your money will now be sent to '.$destination->label().'.');
     }
@@ -103,7 +103,7 @@ class PayoutDestinationController extends Controller
     {
         $this->authorize('delete', $destination);
 
-        $this->destinations->disable($destination, $request->user()->member);
+        $this->destinations->disable($destination, $request->user()->actingMember());
 
         return back()->with('success', $destination->label().' has been removed.');
     }

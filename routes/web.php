@@ -2,9 +2,18 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Webhooks\LencoWebhookController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'Welcome')->name('home');
+/*
+ * Unity is a closed group, so there is no public landing page. The root URL hands
+ * guests straight to the login form and forwards anyone already signed in to their
+ * portal. Fortify's logout and account-deletion responses land here, which is why
+ * the name has to stay `home`.
+ */
+Route::get('/', fn () => Auth::check()
+    ? redirect()->route('dashboard')
+    : redirect()->route('login'))->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');

@@ -84,7 +84,7 @@ class PaymentController extends Controller
      */
     public function store(StoreOwnPaymentRequest $request): RedirectResponse
     {
-        $member = $request->user()->member;
+        $member = $request->user()->actingMember();
         $amount = Kwacha::ofNgwee($request->integer('amount_ngwee'));
         $cycle = $this->currentCycle->get();
         $month = $request->filled('cycle_month_id')

@@ -31,7 +31,7 @@ class PayoutTransferController extends Controller
         try {
             $intent = $this->transfers->payPayout(
                 $payout,
-                $request->user()->member,
+                $request->user()->actingMember(),
                 $request->approver(Permission::PayoutsApprove),
             );
         } catch (DomainRuleException|PaymentGatewayException $exception) {

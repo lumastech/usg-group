@@ -43,7 +43,7 @@ class LoanTransferController extends Controller
             $intent = $this->transfers->disburseLoan(
                 $loan,
                 $month,
-                $request->user()->member,
+                $request->user()->actingMember(),
                 $request->approver(Permission::LoansApprove),
             );
         } catch (DomainRuleException|PaymentGatewayException $exception) {

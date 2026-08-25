@@ -28,7 +28,7 @@ class MemberPayoutDestinationController extends Controller
 
     public function store(StorePayoutDestinationRequest $request, Member $member): RedirectResponse
     {
-        $actor = $request->user()->member;
+        $actor = $request->user()->actingMember();
 
         try {
             $destination = $request->type() === PayoutDestinationType::BankAccount
@@ -66,7 +66,7 @@ class MemberPayoutDestinationController extends Controller
         $this->authorize('confirmName', $destination);
 
         try {
-            $this->destinations->confirmName($destination, $request->user()->member);
+            $this->destinations->confirmName($destination, $request->user()->actingMember());
         } catch (DomainRuleException $exception) {
             return back()->with('error', $exception->getMessage());
         }

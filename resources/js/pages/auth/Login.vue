@@ -92,7 +92,7 @@ defineProps<{
 
             <Button
                 type="submit"
-                class="mt-4 w-full"
+                class="mt-2 h-11 w-full text-base"
                 :tabindex="4"
                 :disabled="processing"
                 data-test="login-button"
@@ -103,8 +103,10 @@ defineProps<{
         </div>
 
         <div class="text-center text-sm text-muted-foreground">
-            Don't have an account?
-            <TextLink :href="register()" :tabindex="5">Sign up</TextLink>
+            Membership is by invitation.
+            <TextLink :href="register()" :tabindex="5">
+                Been invited? Set up your account
+            </TextLink>
         </div>
     </Form>
 </template>

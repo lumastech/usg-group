@@ -66,7 +66,7 @@ class ShareOutPaymentController extends Controller
         }
 
         try {
-            $result = $this->runner->run($cycle, $request->user()->member, $approver);
+            $result = $this->runner->run($cycle, $request->user()->actingMember(), $approver);
         } catch (DomainRuleException|PaymentGatewayException $exception) {
             throw ValidationException::withMessages([
                 'approver_password' => $exception instanceof PaymentGatewayException

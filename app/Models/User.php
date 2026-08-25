@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -49,6 +50,31 @@ class User extends Authenticatable implements PasskeyUser
     public function member(): HasOne
     {
         return $this->hasOne(Member::class);
+    }
+
+    /**
+     * The member record acting here, refusing plainly when there is none.
+     *
+     * Every entry in the ledgers names the member who made it, so an action that moves
+     * or records money cannot be carried out by a login that is not one — the
+     * administrator most of all, who holds every permission and no membership by
+     * design. Without this the actor arrives at the domain service as null and the
+     * refusal reads as a type error, which tells the person at the screen nothing.
+     *
+     * @throws AuthorizationException
+     */
+    public function actingMember(): Member
+    {
+        $member = $this->member;
+
+        if ($member === null) {
+            throw new AuthorizationException(
+                'This login is not linked to a member record in this cycle, and an entry in the '
+                    .'group\'s ledgers has to name the member who made it. Ask an administrator to link it.'
+            );
+        }
+
+        return $member;
     }
 
     /**

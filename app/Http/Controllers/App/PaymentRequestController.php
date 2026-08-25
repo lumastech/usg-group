@@ -33,7 +33,7 @@ class PaymentRequestController extends Controller
     public function __invoke(RequestPaymentRequest $request): RedirectResponse
     {
         $member = Member::query()->acrossCycles()->findOrFail($request->integer('member_id'));
-        $actor = $request->user()->member;
+        $actor = $request->user()->actingMember();
         $amount = Kwacha::ofNgwee($request->integer('amount_ngwee'));
         $month = $request->filled('cycle_month_id')
             ? CycleMonth::query()->acrossCycles()->find($request->integer('cycle_month_id'))

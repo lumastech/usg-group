@@ -44,6 +44,6 @@ class StoreDeclarationRequest extends FormRequest
 
     public function member(): Member
     {
-        return $this->user()->member;
+        return $this->user()->actingMember();
     }
 }

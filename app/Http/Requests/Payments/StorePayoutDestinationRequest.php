@@ -69,6 +69,6 @@ class StorePayoutDestinationRequest extends FormRequest
     {
         $member = $this->route('member');
 
-        return $member instanceof Member ? $member : $this->user()->member;
+        return $member instanceof Member ? $member : $this->user()->actingMember();
     }
 }

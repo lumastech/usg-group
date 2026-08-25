@@ -11,8 +11,6 @@ createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
     layout: (name) => {
         switch (true) {
-            case name === 'Welcome':
-                return null;
             // The committee and member portals bring their own shell
             // (AdminLayout / MemberLayout), so they must not be wrapped again.
             case name.startsWith('app/'):

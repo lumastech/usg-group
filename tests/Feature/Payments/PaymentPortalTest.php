@@ -115,6 +115,22 @@ it('lets the treasurer ask a member\'s phone for money', function (): void {
         ->and(PaymentIntent::first()->status)->toBe(PaymentStatus::AwaitingAuthorization);
 });
 
+it('refuses a login with no member record rather than failing on the actor', function (): void {
+    $admin = User::factory()->create();
+    $admin->assignRole(MemberRole::Admin->value);
+
+    $this->actingAs($admin);
+
+    $this->post(route('app.payments.request'), [
+        'member_id' => $this->member->id,
+        'purpose' => PaymentPurpose::JoiningFee->value,
+        'amount_ngwee' => 25_000,
+        'cycle_month_id' => $this->december->id,
+    ])->assertForbidden();
+
+    expect(PaymentIntent::count())->toBe(0);
+});
+
 it('shows the ledger\'s own refusal on the form rather than moving the money', function (): void {
     actingAsPaymentOffice(MemberRole::Treasurer);
     app(DeclarationService::class)->submit(
