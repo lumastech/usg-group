@@ -1,0 +1,1 @@
+var e={Active:`active`,LeftEarly:`left_early`,Expelled:`expelled`,Deceased:`deceased`},t={Spouse:`spouse`,Parent:`parent`,Sibling:`sibling`,Child:`child`,Other:`other`};export{t as n,e as t};
