@@ -13,6 +13,15 @@ namespace App\Enums;
 enum PaymentPurpose: string
 {
     case SavingsContribution = 'savings_contribution';
+
+    /**
+     * The whole of one month's approved declaration, paid in a single prompt.
+     *
+     * Savings and repayment together, because that is what the member brings to the
+     * table; the trading sheet splits it back out when it is marked received.
+     */
+    case DeclarationSettlement = 'declaration_settlement';
+
     case JoiningFee = 'joining_fee';
     case LoanRepayment = 'loan_repayment';
     case SocialFundContribution = 'social_fund_contribution';
@@ -27,7 +36,7 @@ enum PaymentPurpose: string
     public function direction(): PaymentDirection
     {
         return match ($this) {
-            self::SavingsContribution, self::JoiningFee,
+            self::SavingsContribution, self::DeclarationSettlement, self::JoiningFee,
             self::LoanRepayment, self::SocialFundContribution => PaymentDirection::Collection,
             default => PaymentDirection::Transfer,
         };
@@ -36,13 +45,13 @@ enum PaymentPurpose: string
     /**
      * Whether a settled payment posts to a ledger the moment we hear about it.
      *
-     * Savings alone says no. The trading sheet is the group's worksheet and
-     * `TradingConcluder::conclude()` is the only thing that posts a month — a gateway
-     * payment marks a row received and takes its turn with the cash.
+     * The two that land on the trading sheet say no. The sheet is the group's
+     * worksheet and `TradingConcluder::conclude()` is the only thing that posts a
+     * month — a gateway payment marks a row received and takes its turn with the cash.
      */
     public function postsOnSettlement(): bool
     {
-        return $this !== self::SavingsContribution;
+        return ! in_array($this, [self::SavingsContribution, self::DeclarationSettlement], true);
     }
 
     /** Whether two committee signatures are needed before the money may be sent. */
@@ -60,6 +69,7 @@ enum PaymentPurpose: string
     {
         return match ($this) {
             self::SavingsContribution => 'sav',
+            self::DeclarationSettlement => 'dec',
             self::JoiningFee => 'joi',
             self::LoanRepayment => 'rep',
             self::SocialFundContribution => 'fnd',
@@ -76,6 +86,7 @@ enum PaymentPurpose: string
     {
         return match ($this) {
             self::SavingsContribution => 'Savings contribution',
+            self::DeclarationSettlement => 'Monthly declaration',
             self::JoiningFee => 'Joining fee',
             self::LoanRepayment => 'Loan repayment',
             self::SocialFundContribution => 'Social fund contribution',

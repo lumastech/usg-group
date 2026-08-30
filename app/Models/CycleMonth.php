@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * One month of a cycle, with its declaration window and trading dates pre-resolved.
@@ -35,7 +37,7 @@ use Illuminate\Support\Carbon;
 class CycleMonth extends Model
 {
     /** @use HasFactory<CycleMonthFactory> */
-    use BelongsToCycle, HasFactory;
+    use BelongsToCycle, HasFactory, LogsActivity;
 
     /** Declarations are only accepted between the 1st at 08:00 and the end of the 3rd. */
     public function declarationsOpenAt(?CarbonInterface $at = null): bool
@@ -53,6 +55,15 @@ class CycleMonth extends Model
     public function label(): string
     {
         return $this->month->format('F Y');
+    }
+
+    /**
+     * Moving a window is a constitutional change, so it is logged like one: the audit
+     * portal has to be able to answer why a declaration was accepted on the 9th.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()->logFillable()->logOnlyDirty()->dontLogEmptyChanges();
     }
 
     /** @return array<string, string> */

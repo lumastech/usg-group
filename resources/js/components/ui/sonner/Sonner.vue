@@ -19,6 +19,7 @@ const props = defineProps<ToasterProps>()
       '--border-radius': 'var(--radius)',
     }"
     v-bind="props"
+    :position="props.position ?? 'top-center'"
   >
     <template #success-icon>
       <CircleCheckIcon class="size-4" />

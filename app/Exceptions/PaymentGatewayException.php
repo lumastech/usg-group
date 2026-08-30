@@ -20,6 +20,14 @@ class PaymentGatewayException extends RuntimeException
         public readonly ?int $httpStatus = null,
         /** @var array<string, mixed> */
         public readonly array $context = [],
+        /**
+         * The request went out and never came back, so we do not know what it did.
+         *
+         * A refusal says the money did not move; this says nobody can tell. The
+         * difference decides whether the payment is written off as failed — freeing the
+         * member to be asked for it again — or left standing for the poller to settle.
+         */
+        public readonly bool $outcomeUnknown = false,
         ?Throwable $previous = null,
     ) {
         parent::__construct($message, 0, $previous);

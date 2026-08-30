@@ -9,6 +9,7 @@ use App\Enums\MobileMoneyOperator;
 use App\Enums\PaymentStatus;
 use App\Enums\PayoutDestinationType;
 use App\Exceptions\PaymentGatewayException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 
@@ -67,6 +68,46 @@ it('works the network out from the number when it is not told', function (): voi
     ));
 
     Http::assertSent(fn ($request): bool => $request['operator'] === 'mtn');
+});
+
+/**
+ * The prompt reaches the handset and the provider takes its time answering. cURL gives
+ * up first, and what comes back must be this module's own exception — not a raw
+ * ConnectionException escaping to a 500 page while the member's phone is ringing.
+ */
+it('turns a request that timed out into a refusal it does not know the outcome of', function (): void {
+    Http::fake(fn () => throw new ConnectionException('cURL error 28: Operation timed out'));
+
+    try {
+        app(PaymentGateway::class)->collect(new CollectionRequest(
+            reference: 'usg-sav-00004-1',
+            amountNgwee: 50_000,
+            phone: '0977433571',
+        ));
+
+        $this->fail('The timeout should have been raised as a PaymentGatewayException.');
+    } catch (PaymentGatewayException $exception) {
+        expect($exception->outcomeUnknown)->toBeTrue()
+            ->and($exception->isRetryable())->toBeTrue()
+            ->and($exception->reason())->toContain('did not answer in time');
+    }
+});
+
+/** A refusal the provider actually sent is known: nothing moved. */
+it('does not call a refusal the provider sent an unknown outcome', function (): void {
+    Http::fake(['*' => Http::response(['status' => false, 'message' => 'Insufficient funds', 'errorCode' => '02'], 400)]);
+
+    try {
+        app(PaymentGateway::class)->collect(new CollectionRequest(
+            reference: 'usg-sav-00005-1',
+            amountNgwee: 50_000,
+            phone: '0977433571',
+        ));
+
+        $this->fail('The refusal should have been raised.');
+    } catch (PaymentGatewayException $exception) {
+        expect($exception->outcomeUnknown)->toBeFalse();
+    }
 });
 
 it('refuses to ask a number it cannot place on a network', function (): void {

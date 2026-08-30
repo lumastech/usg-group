@@ -73,13 +73,13 @@ defineExpose({ push });
     <ClientOnly>
         <Teleport to="body">
             <div
-                class="pointer-events-none fixed inset-x-0 top-4 z-[60] flex flex-col items-center gap-2 px-4 sm:top-auto sm:right-4 sm:bottom-4 sm:left-auto sm:items-end"
+                class="pointer-events-none fixed inset-x-0 top-4 z-[60] flex flex-col items-center gap-2 px-4"
                 role="status"
                 aria-live="polite"
             >
                 <TransitionGroup
                     enter-active-class="transition duration-200 ease-out"
-                    enter-from-class="opacity-0 -translate-y-2 sm:translate-y-2 sm:translate-x-2"
+                    enter-from-class="opacity-0 -translate-y-2"
                     leave-active-class="transition duration-150 ease-in"
                     leave-to-class="opacity-0 scale-95"
                 >

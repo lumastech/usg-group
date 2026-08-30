@@ -71,24 +71,39 @@ class CycleMonthPlanner
         return $months;
     }
 
+    /**
+     * The constitution's dates for one calendar month.
+     *
+     * The only place the 1st/3rd/4th/7th shape is turned into dates. The settings
+     * screen restores a month from here, so "back to the constitution" and a freshly
+     * planned cycle can never mean two different things.
+     *
+     * @return array{declarations_open_at: CarbonInterface, declarations_close_at: CarbonInterface, trading_starts_on: CarbonInterface, trading_concludes_on: CarbonInterface, disbursement_on: CarbonInterface}
+     */
+    public function datesFor(CarbonInterface $month, WeekendTradingPolicy $policy): array
+    {
+        $disbursement = $this->disbursementDateFor($month, $policy);
+
+        return [
+            'declarations_open_at' => $month->copy()->startOfMonth()
+                ->addDays(self::DECLARATIONS_OPEN_DAY - 1)
+                ->setTime(self::DECLARATIONS_OPEN_HOUR, 0),
+            'declarations_close_at' => $month->copy()->startOfMonth()
+                ->addDays(self::DECLARATIONS_CLOSE_DAY - 1)
+                ->endOfDay(),
+            'trading_starts_on' => $month->copy()->startOfMonth()
+                ->addDays(self::TRADING_START_DAY - 1),
+            'trading_concludes_on' => $disbursement,
+            'disbursement_on' => $disbursement,
+        ];
+    }
+
     protected function planMonth(Cycle $cycle, CarbonInterface $month, int $sequence): CycleMonth
     {
-        $disbursement = $this->disbursementDateFor($month, $cycle->weekend_trading_policy);
-
         return CycleMonth::updateOrCreate(
             ['cycle_id' => $cycle->id, 'sequence' => $sequence],
-            [
+            $this->datesFor($month, $cycle->weekend_trading_policy) + [
                 'month' => $month->copy()->startOfMonth(),
-                'declarations_open_at' => $month->copy()->startOfMonth()
-                    ->addDays(self::DECLARATIONS_OPEN_DAY - 1)
-                    ->setTime(self::DECLARATIONS_OPEN_HOUR, 0),
-                'declarations_close_at' => $month->copy()->startOfMonth()
-                    ->addDays(self::DECLARATIONS_CLOSE_DAY - 1)
-                    ->endOfDay(),
-                'trading_starts_on' => $month->copy()->startOfMonth()
-                    ->addDays(self::TRADING_START_DAY - 1),
-                'trading_concludes_on' => $disbursement,
-                'disbursement_on' => $disbursement,
                 'interest_allocation_method' => $sequence === 1
                     ? InterestAllocationMethod::OwnSavingsFlat
                     : InterestAllocationMethod::PooledProRata,

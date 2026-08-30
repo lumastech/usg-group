@@ -20,6 +20,7 @@ enum Permission: string
     case DeclarationsView = 'declarations.view';
     case DeclarationsSubmitOwn = 'declarations.submit-own';
     case DeclarationsRecord = 'declarations.record';
+    case DeclarationsApprove = 'declarations.approve';
 
     case TradingOperate = 'trading.operate';
 
@@ -47,7 +48,12 @@ enum Permission: string
 
     case AuditView = 'audit.view';
 
+    /**
+     * Opening and closing the cycle itself, and importing the workbook it starts from.
+     * Deliberately narrower than it sounds: moving a month's windows is cycles.calendar.
+     */
     case CyclesManage = 'cycles.manage';
+    case CyclesCalendar = 'cycles.calendar';
 
     /** @return array<int, string> */
     public static function values(): array
@@ -71,6 +77,7 @@ enum Permission: string
             self::DeclarationsView => 'View declarations',
             self::DeclarationsSubmitOwn => 'Submit own declaration',
             self::DeclarationsRecord => 'Record declarations for members',
+            self::DeclarationsApprove => 'Approve declarations for payment',
             self::TradingOperate => 'Operate the trading console',
             self::LoansView => 'View loans',
             self::LoansRequest => 'Request a loan',
@@ -90,6 +97,7 @@ enum Permission: string
             self::ReportsView => 'View reports',
             self::AuditView => 'Review the audit trail',
             self::CyclesManage => 'Manage cycles',
+            self::CyclesCalendar => 'Re-date the cycle calendar',
         };
     }
 }

@@ -40,6 +40,8 @@ export type PaymentIntent = {
     payable_id: number | null;
     attempt: number;
     is_posted: boolean;
+    /** An unanswered prompt the member may now give up on and try again. */
+    has_stalled: boolean;
     initiated_at: string | null;
     completed_at: string | null;
     settled_at: string | null;

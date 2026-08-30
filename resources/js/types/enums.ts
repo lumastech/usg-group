@@ -74,13 +74,14 @@ export const cycleStatusValues: readonly CycleStatus[] = ['draft', 'active', 'cl
 
 export const DeclarationStatus = {
     Submitted: 'submitted',
+    Approved: 'approved',
     Locked: 'locked',
     Processed: 'processed',
 } as const;
 
 export type DeclarationStatus = (typeof DeclarationStatus)[keyof typeof DeclarationStatus];
 
-export const declarationStatusValues: readonly DeclarationStatus[] = ['submitted', 'locked', 'processed'];
+export const declarationStatusValues: readonly DeclarationStatus[] = ['submitted', 'approved', 'locked', 'processed'];
 
 export const ExpulsionGround = {
     Dishonesty: 'dishonesty',
@@ -267,6 +268,7 @@ export const paymentDirectionValues: readonly PaymentDirection[] = ['collection'
 
 export const PaymentPurpose = {
     SavingsContribution: 'savings_contribution',
+    DeclarationSettlement: 'declaration_settlement',
     JoiningFee: 'joining_fee',
     LoanRepayment: 'loan_repayment',
     SocialFundContribution: 'social_fund_contribution',
@@ -280,7 +282,7 @@ export const PaymentPurpose = {
 
 export type PaymentPurpose = (typeof PaymentPurpose)[keyof typeof PaymentPurpose];
 
-export const paymentPurposeValues: readonly PaymentPurpose[] = ['savings_contribution', 'joining_fee', 'loan_repayment', 'social_fund_contribution', 'loan_disbursement', 'payout', 'share_out', 'funeral_grant', 'unity_baby_grant', 'diaspora_apportionment'];
+export const paymentPurposeValues: readonly PaymentPurpose[] = ['savings_contribution', 'declaration_settlement', 'joining_fee', 'loan_repayment', 'social_fund_contribution', 'loan_disbursement', 'payout', 'share_out', 'funeral_grant', 'unity_baby_grant', 'diaspora_apportionment'];
 
 export const PaymentStatus = {
     Draft: 'draft',
@@ -339,6 +341,7 @@ export const Permission = {
     DeclarationsView: 'declarations.view',
     DeclarationsSubmitOwn: 'declarations.submit-own',
     DeclarationsRecord: 'declarations.record',
+    DeclarationsApprove: 'declarations.approve',
     TradingOperate: 'trading.operate',
     LoansView: 'loans.view',
     LoansRequest: 'loans.request',
@@ -358,11 +361,12 @@ export const Permission = {
     ReportsView: 'reports.view',
     AuditView: 'audit.view',
     CyclesManage: 'cycles.manage',
+    CyclesCalendar: 'cycles.calendar',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
 
-export const permissionValues: readonly Permission[] = ['members.view', 'members.manage', 'savings.view', 'savings.record', 'declarations.view', 'declarations.submit-own', 'declarations.record', 'trading.operate', 'loans.view', 'loans.request', 'loans.approve', 'loans.disburse', 'loans.record-repayment', 'fund.view', 'fund.record', 'fund.approve-outflow', 'payouts.approve', 'payouts.execute', 'payments.view', 'payments.initiate', 'payments.retry', 'payments.reconcile', 'governance.record', 'reports.view', 'audit.view', 'cycles.manage'];
+export const permissionValues: readonly Permission[] = ['members.view', 'members.manage', 'savings.view', 'savings.record', 'declarations.view', 'declarations.submit-own', 'declarations.record', 'declarations.approve', 'trading.operate', 'loans.view', 'loans.request', 'loans.approve', 'loans.disburse', 'loans.record-repayment', 'fund.view', 'fund.record', 'fund.approve-outflow', 'payouts.approve', 'payouts.execute', 'payments.view', 'payments.initiate', 'payments.retry', 'payments.reconcile', 'governance.record', 'reports.view', 'audit.view', 'cycles.manage', 'cycles.calendar'];
 
 export const SavingsTransactionType = {
     Contribution: 'contribution',

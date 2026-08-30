@@ -7,7 +7,9 @@ use App\Domain\Loans\ScheduledRepayments;
 use App\Domain\Savings\SavingsLedger;
 use App\Enums\DeclarationStatus;
 use App\Exceptions\DeclarationLockedException;
+use App\Exceptions\DeclarationNotApprovedException;
 use App\Exceptions\DeclarationWindowClosedException;
+use App\Exceptions\DomainRuleException;
 use App\Exceptions\LoanNotEligibleException;
 use App\Models\CycleMonth;
 use App\Models\Declaration;
@@ -64,8 +66,11 @@ class DeclarationService
 
         if ($existing !== null && ! $existing->status->isEditable()) {
             throw new DeclarationLockedException(
-                "The declaration for {$month->label()} is ".strtolower($existing->status->label())
-                    .' and can no longer be changed.'
+                $existing->isApproved()
+                    ? "The declaration for {$month->label()} has been approved and is waiting to be paid, "
+                        .'so it can no longer be changed. Ask the treasurer to reopen it.'
+                    : "The declaration for {$month->label()} is ".strtolower($existing->status->label())
+                        .' and can no longer be changed.'
             );
         }
 
@@ -99,6 +104,97 @@ class DeclarationService
 
             return $declaration->refresh();
         });
+    }
+
+    /**
+     * The committee's "ask": the figures are accepted and the member may now be
+     * charged for them.
+     *
+     * This is the point the promise stops being the member's to change. It is a stamp
+     * rather than only a status because approval given on the trading day lands on a
+     * row that is already Locked, and the payment gate still has to see it.
+     */
+    public function approve(Declaration $declaration, Member $actor, ?CarbonInterface $at = null): Declaration
+    {
+        if ($declaration->isApproved()) {
+            throw DomainRuleException::make(
+                "{$declaration->member->full_name}'s declaration has already been approved."
+            );
+        }
+
+        if ($declaration->status === DeclarationStatus::Processed) {
+            throw new DeclarationLockedException(
+                'That declaration has already been through its trading session; there is nothing left to approve.'
+            );
+        }
+
+        return DB::transaction(function () use ($declaration, $actor, $at): Declaration {
+            $declaration->fill([
+                'approved_at' => $at ?? Carbon::now(),
+                'approved_by_member_id' => $actor->id,
+                /* A declaration approved after the session opened stays Locked: the
+                   status is where the month is, the stamp is whether it was asked for. */
+                'status' => $declaration->status === DeclarationStatus::Submitted
+                    ? DeclarationStatus::Approved
+                    : $declaration->status,
+            ])->save();
+
+            return $declaration->refresh();
+        });
+    }
+
+    /**
+     * Hands an approved declaration back to the member to change.
+     *
+     * Only before the month is locked: once the trading session has been built on the
+     * figures they are the session's, and a correction there is the table's business.
+     */
+    public function reopen(Declaration $declaration): Declaration
+    {
+        if ($declaration->status !== DeclarationStatus::Approved) {
+            throw new DeclarationLockedException(
+                'Only a declaration that is waiting to be paid can be reopened; this one is '
+                    .strtolower($declaration->status->label()).'.'
+            );
+        }
+
+        return DB::transaction(function () use ($declaration): Declaration {
+            $declaration->fill([
+                'approved_at' => null,
+                'approved_by_member_id' => null,
+                'status' => DeclarationStatus::Submitted,
+            ])->save();
+
+            return $declaration->refresh();
+        });
+    }
+
+    /**
+     * The declaration money may be collected against, or the reason there is none.
+     *
+     * Payment follows approval, never precedes it: a member with no row on the sheet
+     * has nowhere for the money to land, and a row nobody has asked for is still a
+     * request the committee may yet send back.
+     */
+    public function assertPayable(Member $member, CycleMonth $month): Declaration
+    {
+        $declaration = $this->find($member, $month);
+
+        if ($declaration === null) {
+            throw new DeclarationNotApprovedException(
+                "{$member->full_name} has not declared for {$month->label()}, so there is nowhere to record this "
+                    .'payment. The declaration has to come first.'
+            );
+        }
+
+        if (! $declaration->isApproved()) {
+            throw new DeclarationNotApprovedException(
+                "{$member->full_name}'s declaration for {$month->label()} has not been approved yet, so it "
+                    .'cannot be paid. The committee approves it first.'
+            );
+        }
+
+        return $declaration;
     }
 
     /** The member's declaration for a month, or null when they have not made one. */
@@ -144,7 +240,7 @@ class DeclarationService
     {
         return Declaration::query()
             ->forMonth($month)
-            ->where('status', DeclarationStatus::Submitted->value)
+            ->whereIn('status', [DeclarationStatus::Submitted->value, DeclarationStatus::Approved->value])
             ->update(['status' => DeclarationStatus::Locked->value]);
     }
 

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\MoneyCast;
 use App\Enums\DeclarationStatus;
+use App\Enums\PaymentStatus;
 use App\Models\Concerns\BelongsToCycle;
 use Brick\Money\Money;
 use Database\Factories\DeclarationFactory;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -34,6 +36,7 @@ use Spatie\Activitylog\Support\LogOptions;
  * @property Money $total_expected_payment_ngwee
  * @property Carbon|null $submitted_at
  * @property bool $is_late
+ * @property Carbon|null $approved_at
  * @property DeclarationStatus $status
  * @property string|null $note
  */
@@ -41,7 +44,7 @@ use Spatie\Activitylog\Support\LogOptions;
     'cycle_id', 'cycle_month_id', 'member_id', 'saving_amount_ngwee',
     'loan_repayment_amount_ngwee', 'loan_requested_amount_ngwee',
     'total_expected_payment_ngwee', 'submitted_at', 'is_late', 'status',
-    'recorded_by_member_id', 'note',
+    'approved_at', 'recorded_by_member_id', 'approved_by_member_id', 'note',
 ])]
 class Declaration extends Model
 {
@@ -66,16 +69,60 @@ class Declaration extends Model
         return $this->belongsTo(Member::class, 'recorded_by_member_id');
     }
 
+    /** @return BelongsTo<Member, $this> */
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(Member::class, 'approved_by_member_id');
+    }
+
     /** @return HasOne<TradingEntry, $this> */
     public function tradingEntry(): HasOne
     {
         return $this->hasOne(TradingEntry::class);
     }
 
+    /**
+     * The attempts to pay this declaration from a handset.
+     *
+     * One declaration is one payment — the member is asked for the whole of what the
+     * committee approved — so this is a list of attempts, not of instalments.
+     *
+     * @return MorphMany<PaymentIntent, $this>
+     */
+    public function paymentIntents(): MorphMany
+    {
+        return $this->morphMany(PaymentIntent::class, 'payable');
+    }
+
+    /**
+     * The payment that stands for this declaration, if one has been started.
+     *
+     * Failed and abandoned attempts are left out: what the screen needs to know is
+     * whether money is on its way, not how many times the network dropped.
+     */
+    public function standingPayment(): ?PaymentIntent
+    {
+        return $this->paymentIntents()
+            ->whereNotIn('status', [PaymentStatus::Failed->value, PaymentStatus::Abandoned->value])
+            ->latest('id')
+            ->first();
+    }
+
     /** @param  Builder<Declaration>  $query */
     public function scopeForMonth(Builder $query, CycleMonth|int $month): void
     {
         $query->where('cycle_month_id', $month instanceof CycleMonth ? $month->id : $month);
+    }
+
+    /**
+     * The committee has asked for this declaration, so money may be collected for it.
+     *
+     * Read from the stamp rather than the status: an approval given once the trading
+     * session has opened leaves the row Locked, and it is still approved.
+     */
+    public function isApproved(): bool
+    {
+        return $this->approved_at !== null;
     }
 
     /**
@@ -111,6 +158,7 @@ class Declaration extends Model
             'total_expected_payment_ngwee' => MoneyCast::class,
             'submitted_at' => 'datetime',
             'is_late' => 'boolean',
+            'approved_at' => 'datetime',
             'status' => DeclarationStatus::class,
         ];
     }

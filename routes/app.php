@@ -5,7 +5,9 @@ use App\Http\Controllers\App\AuditController;
 use App\Http\Controllers\App\ClosureController;
 use App\Http\Controllers\App\ClosureExecutionController;
 use App\Http\Controllers\App\CollateralClaimController;
+use App\Http\Controllers\App\CycleCalendarController;
 use App\Http\Controllers\App\DashboardController;
+use App\Http\Controllers\App\DeclarationApprovalController;
 use App\Http\Controllers\App\DeclarationController;
 use App\Http\Controllers\App\DeclarationExportController;
 use App\Http\Controllers\App\DiasporaApportionmentController;
@@ -96,6 +98,9 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
      * Declarations. Reading the month's sheet needs only a viewing permission — it is
      * read out at the table — while capturing one on somebody's behalf is the
      * treasurer's late-entry path and carries `declarations.record`.
+     *
+     * Approving is the "ask" that turns a member's request into something payable, and
+     * carries `declarations.approve`. Nothing may be collected before it.
      */
     Route::get('declarations', [DeclarationController::class, 'index'])->name('declarations.index');
     Route::get('declarations/export/{format}', DeclarationExportController::class)
@@ -105,6 +110,30 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
     Route::post('declarations', [DeclarationController::class, 'store'])
         ->middleware('permission:declarations.record')
         ->name('declarations.store');
+
+    Route::middleware('permission:declarations.approve')->group(function () {
+        Route::post('declarations/{declaration}/approve', [DeclarationApprovalController::class, 'store'])
+            ->name('declarations.approve');
+        Route::delete('declarations/{declaration}/approve', [DeclarationApprovalController::class, 'destroy'])
+            ->name('declarations.reopen');
+    });
+
+    /*
+     * Settings. The cycle's calendar is the only place a declaration period or a
+     * trading day is moved, and every window in the portal is read from the rows it
+     * writes — so it carries `cycles.calendar` on the read as well as on the write.
+     * That is deliberately not `cycles.manage`: the chair and the treasury re-date a
+     * month between them, while opening and closing the cycle stays with the admin.
+     */
+    Route::middleware('permission:cycles.calendar')->group(function () {
+        Route::redirect('settings', 'settings/calendar');
+        Route::get('settings/calendar', [CycleCalendarController::class, 'index'])
+            ->name('settings.calendar');
+        Route::put('settings/calendar/{month}', [CycleCalendarController::class, 'update'])
+            ->name('settings.calendar.update');
+        Route::post('settings/calendar/{month}/reset', [CycleCalendarController::class, 'reset'])
+            ->name('settings.calendar.reset');
+    });
 
     /*
      * The trading console. Watching the day is open to anyone who may read the

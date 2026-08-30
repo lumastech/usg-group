@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\My\DashboardController;
 use App\Http\Controllers\My\DeclarationController;
+use App\Http\Controllers\My\DeclarationPaymentController;
 use App\Http\Controllers\My\LoanController;
 use App\Http\Controllers\My\PaymentController;
 use App\Http\Controllers\My\PayoutDestinationController;
@@ -34,6 +35,13 @@ Route::middleware(['auth', 'verified'])->prefix('my')->name('my.')->group(functi
     Route::post('declarations', [DeclarationController::class, 'store'])
         ->middleware('permission:declarations.submit-own')
         ->name('declarations.store');
+
+    /*
+     * Paying the approved declaration without leaving the screen it was made on. The
+     * amount is the committee's, not the member's, so nothing is posted with it.
+     */
+    Route::post('declarations/pay', [DeclarationPaymentController::class, 'store'])
+        ->name('declarations.pay');
 
     Route::get('savings', SavingsController::class)->name('savings');
     Route::get('savings/statement', [SavingsController::class, 'statement'])->name('savings.statement');

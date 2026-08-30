@@ -66,6 +66,10 @@ class HandleInertiaRequests extends Middleware
              */
             'payments' => fn (): ?array => $this->paymentWidget(),
             'flash' => [
+                /* The reference and amount a card payment was drafted with, so the
+                   browser can hand the member to the provider's widget. Only ever set
+                   on the redirect back from starting one. */
+                'startedPayment' => fn () => $request->session()->get('startedPayment'),
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
                 'warning' => fn () => $request->session()->get('warning'),

@@ -7,4 +7,12 @@ enum WeekendTradingPolicy: string
 {
     case NextMonday = 'next_monday';
     case PreviousFriday = 'previous_friday';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::NextMonday => 'The Monday after',
+            self::PreviousFriday => 'The Friday before',
+        };
+    }
 }

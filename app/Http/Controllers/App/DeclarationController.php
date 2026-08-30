@@ -52,7 +52,7 @@ class DeclarationController extends Controller
                 'missing' => [],
                 'members' => [],
                 'rules' => null,
-                'abilities' => ['record' => false],
+                'abilities' => ['record' => false, 'approve' => false],
             ]);
         }
 
@@ -89,6 +89,9 @@ class DeclarationController extends Controller
             'filters' => ['month' => $month?->sequence],
             'abilities' => [
                 'record' => $request->user()->can(Permission::DeclarationsRecord->value),
+                /* The "ask". Row-level state (already approved, already processed)
+                   lives on the sheet row; the policy re-checks both on the post. */
+                'approve' => $request->user()->can(Permission::DeclarationsApprove->value),
             ],
         ]);
     }

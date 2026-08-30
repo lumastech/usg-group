@@ -12,6 +12,7 @@ import {
     Download,
     HandCoins,
     Plus,
+    RotateCcw,
     TriangleAlert,
     UserX,
 } from '@lucide/vue';
@@ -56,7 +57,7 @@ const props = defineProps<{
     members: { id: number; member_number: number; full_name: string }[];
     rules: DeclarationRules | null;
     filters?: { month: number | null };
-    abilities: { record: boolean };
+    abilities: { record: boolean; approve: boolean };
 }>();
 
 const recordOpen = ref(false);
@@ -88,6 +89,46 @@ const columns: Column<DeclarationSheetRow>[] = [
     { key: 'total_ngwee', label: 'Total expected', numeric: true },
     { key: 'status', label: 'Status' },
 ];
+
+/** Declarations still waiting for the committee's ask, so nobody can pay them yet. */
+const awaitingCount = computed<number>(
+    () =>
+        props.sheet?.rows.filter((row) => row.declared && !row.approved)
+            .length ?? 0,
+);
+
+/**
+ * The ask is offered on any declared row that is not yet approved and not yet through
+ * its trading session — including a locked one, since a member turning up to pay on
+ * the 5th still needs somebody to have accepted their figures.
+ */
+function canApprove(row: DeclarationSheetRow): boolean {
+    return (
+        props.abilities.approve &&
+        row.declared &&
+        !row.approved &&
+        row.status !== 'processed'
+    );
+}
+
+/** Handing it back is only possible before the month locks. */
+function canReopen(row: DeclarationSheetRow): boolean {
+    return props.abilities.approve && row.status === 'approved';
+}
+
+function approve(row: DeclarationSheetRow): void {
+    router.post(
+        `/app/declarations/${row.declaration_id}/approve`,
+        {},
+        { preserveScroll: true },
+    );
+}
+
+function reopen(row: DeclarationSheetRow): void {
+    router.delete(`/app/declarations/${row.declaration_id}/approve`, {
+        preserveScroll: true,
+    });
+}
 
 /** The declaration is capture-on-behalf, so the late flag is the treasurer's cue. */
 const lateCount = computed<number>(
@@ -183,7 +224,11 @@ function submit(): void {
                     :value="`${sheet.declared_count} / ${sheet.rows.length}`"
                     :icon="ClipboardList"
                     accent="brand"
-                    hint="Active members"
+                    :hint="
+                        awaitingCount > 0
+                            ? `${awaitingCount} awaiting approval`
+                            : 'All approved'
+                    "
                 />
                 <StatCard
                     label="Expected at the table"
@@ -299,6 +344,29 @@ function submit(): void {
                                     size="sm"
                                 />
                             </span>
+                        </template>
+
+                        <!-- The ask. Approving accepts the figures: the member can no
+                             longer edit them and either side may start the payment. -->
+                        <template #actions="{ row }">
+                            <AppButton
+                                v-if="canApprove(row)"
+                                size="sm"
+                                @click="approve(row)"
+                            >
+                                Ask
+                            </AppButton>
+                            <AppButton
+                                v-else-if="canReopen(row)"
+                                variant="outline"
+                                size="sm"
+                                @click="reopen(row)"
+                            >
+                                <template #icon
+                                    ><RotateCcw class="size-4"
+                                /></template>
+                                Reopen
+                            </AppButton>
                         </template>
                     </DataTable>
 

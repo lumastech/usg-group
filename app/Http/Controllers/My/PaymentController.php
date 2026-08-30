@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\My;
 
 use App\Domain\Cycles\CurrentCycle;
+use App\Domain\Declarations\DeclarationService;
 use App\Domain\Loans\LoanLedger;
 use App\Domain\Payments\CollectionInitiator;
 use App\Domain\Payments\PaymentGateway;
@@ -13,6 +14,7 @@ use App\Domain\SocialFund\SocialFundContributions;
 use App\Enums\LoanStatus;
 use App\Enums\PaymentChannel;
 use App\Enums\PaymentPurpose;
+use App\Enums\PaymentStatus;
 use App\Exceptions\DomainRuleException;
 use App\Exceptions\PaymentGatewayException;
 use App\Http\Controllers\Controller;
@@ -96,6 +98,18 @@ class PaymentController extends Controller
                 ? $this->draftForWidget($request, $member, $amount, $month)
                 : $this->push($request, $member, $amount, $month);
         } catch (DomainRuleException|PaymentGatewayException $exception) {
+            /* A request that timed out is not a refusal: the prompt may be on the
+               handset right now, and the intent is left standing for the poller. Saying
+               so beats a validation error that invites a second prompt against a live
+               one. */
+            if ($exception instanceof PaymentGatewayException && $exception->outcomeUnknown) {
+                return back()->with(
+                    'info',
+                    'We did not get an answer from the payment provider in time. If a prompt reached your '
+                        .'phone, approve it — then check the payment below to confirm it went through.',
+                );
+            }
+
             throw ValidationException::withMessages([
                 'amount_ngwee' => $exception instanceof PaymentGatewayException
                     ? $exception->reason()
@@ -126,10 +140,31 @@ class PaymentController extends Controller
         try {
             $this->intents->refresh($intent);
         } catch (PaymentGatewayException $exception) {
+            /* A card the member opened and closed without paying: the provider has
+               never heard of the reference because nothing was ever sent. Released
+               rather than left standing, or the member could not try again. Only on a
+               definite refusal — a timeout or a 500 says nothing about the money. */
+            if ($intent->status === PaymentStatus::Draft && ! $exception->isRetryable()) {
+                $this->intents->abandonDraft($intent, 'Closed without paying.');
+
+                return back()->with('info', 'That payment was not completed, so nothing was taken. You can try again.');
+            }
+
             return back()->with('error', $exception->reason());
         }
 
         $this->poster->post($intent->refresh());
+
+        /* Still nothing, long after the prompt went out: nobody is going to approve it
+           now, so it is released rather than left blocking the next attempt. Asking the
+           provider first is what makes this safe — money that did move has already been
+           taken up above. */
+        if ($this->intents->abandonStalled($intent->refresh())) {
+            return back()->with(
+                'info',
+                'That prompt was never approved, so nothing was taken. You can try again.'
+            );
+        }
 
         return back()->with('success', $intent->refresh()->status->memberLabel().'.');
     }
@@ -205,8 +240,9 @@ class PaymentController extends Controller
     /**
      * The same rules the push path applies, checked before a card payment is drafted.
      *
-     * Without this a member could pay K750 by card in a K500-increment month and only
-     * find out it could not be recorded after the money had gone.
+     * Without this a member could pay K750 by card in a K500-increment month, or pay
+     * against a declaration nobody has approved, and only find out it could not be
+     * recorded after the money had gone.
      */
     protected function assertAcceptable(
         StoreOwnPaymentRequest $request,
@@ -215,8 +251,7 @@ class PaymentController extends Controller
         ?CycleMonth $month,
     ): void {
         match ($request->purpose()) {
-            PaymentPurpose::SavingsContribution => app(SavingsLedger::class)
-                ->assertValidContribution($member, $this->requireMonth($month), $amount),
+            PaymentPurpose::SavingsContribution => $this->assertSavingsPayable($member, $this->requireMonth($month), $amount),
             PaymentPurpose::SocialFundContribution => app(SocialFundContributions::class)
                 ->assertPayable($member, $member->cycle, $amount),
             PaymentPurpose::JoiningFee => $member->joining_fee_paid
@@ -225,6 +260,16 @@ class PaymentController extends Controller
             PaymentPurpose::LoanRepayment => $this->ownLoan($request, $member),
             default => null,
         };
+    }
+
+    /**
+     * The savings rules and the approval the push path applies, before a card is drafted.
+     */
+    protected function assertSavingsPayable(Member $member, CycleMonth $month, Money $amount): void
+    {
+        app(SavingsLedger::class)->assertValidContribution($member, $month, $amount);
+
+        app(DeclarationService::class)->assertPayable($member, $month);
     }
 
     protected function ownLoan(StoreOwnPaymentRequest $request, Member $member): Loan

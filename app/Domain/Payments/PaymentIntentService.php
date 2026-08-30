@@ -124,6 +124,11 @@ class PaymentIntentService
      *
      * Returns false when the news is stale — a webhook and a poll race each other on
      * every payment, and a Successful arriving after a Posted must change nothing.
+     *
+     * `initiated_at` is stamped once and never moved: it is when the request went out,
+     * and it is what the give-up window is measured from. A provider that answers a
+     * status query with a fresh timestamp would otherwise push the clock forward on
+     * every poll, and a prompt nobody ever approves would never be allowed to die.
      */
     public function apply(PaymentIntent $intent, PaymentResult $result): bool
     {
@@ -134,7 +139,7 @@ class PaymentIntentService
             'provider_reference' => $result->providerReference,
             'fee_ngwee' => $result->feeNgwee,
             'fee_bearer' => $result->feeBearer,
-            'initiated_at' => $result->initiatedAt,
+            'initiated_at' => $intent->initiated_at ?? $result->initiatedAt,
             'completed_at' => $result->completedAt,
             'settled_at' => $result->settledAt,
             'status_reason' => $result->reasonForFailure,
@@ -178,6 +183,50 @@ class PaymentIntentService
             'status' => PaymentStatus::NeedsAttention,
             'status_reason' => $reason,
         ])->save();
+    }
+
+    /**
+     * A drafted payment the member never went through with.
+     *
+     * Only ever a Draft: nothing was sent to the provider, so nothing can have moved,
+     * and leaving the row standing would block the next attempt at the same thing —
+     * a member who opens the card page and closes it must not be locked out of paying.
+     */
+    public function abandonDraft(PaymentIntent $intent, string $reason): bool
+    {
+        if ($intent->status !== PaymentStatus::Draft) {
+            return false;
+        }
+
+        $intent->forceFill([
+            'status' => PaymentStatus::Abandoned,
+            'status_reason' => $reason,
+        ])->save();
+
+        return true;
+    }
+
+    /**
+     * Gives up on a collection nobody answered in time.
+     *
+     * An unapproved handset prompt never comes back as a refusal — it simply goes
+     * unanswered — so something has to declare it dead, or the member is locked out of
+     * paying by an attempt that will never conclude. Only past `PaymentIntent::hasStalled()`,
+     * and only for collections: a transfer whose outcome is unknown may have moved the
+     * group's money and is escalated instead.
+     */
+    public function abandonStalled(PaymentIntent $intent, ?string $reason = null): bool
+    {
+        if (! $intent->hasStalled()) {
+            return false;
+        }
+
+        $intent->forceFill([
+            'status' => PaymentStatus::Abandoned,
+            'status_reason' => $reason ?? $intent->status_reason ?? 'Nobody approved this payment in time.',
+        ])->save();
+
+        return true;
     }
 
     /** Ties the payment to the ledger row it produced. Idempotent by unique index. */
@@ -235,8 +284,16 @@ class PaymentIntentService
         try {
             $result = $call();
         } catch (PaymentGatewayException $exception) {
+            /*
+             * A refusal is a fact: nothing moved, and the intent is closed as Failed so
+             * the member is free to try again. A request that timed out is not — the
+             * provider may have taken it and put a prompt on the handset, and only the
+             * answer was lost. That one is left in flight for the poller to resolve
+             * against the provider, because Failed would let a second prompt go out
+             * against a live one and take the money twice.
+             */
             $intent->forceFill([
-                'status' => PaymentStatus::Failed,
+                'status' => $exception->outcomeUnknown ? PaymentStatus::Pending : PaymentStatus::Failed,
                 'status_reason' => $exception->reason(),
                 'initiated_at' => $intent->initiated_at ?? Carbon::now(),
             ])->save();

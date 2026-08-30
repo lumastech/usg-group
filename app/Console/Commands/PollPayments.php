@@ -36,7 +36,7 @@ class PollPayments extends Command
     {
         $asked = $this->pollInFlight($intents);
         $posted = $this->postSettled($poster);
-        $expired = $this->expireStale();
+        $expired = $this->expireStale($intents);
 
         $this->components->info(
             "Asked about {$asked} payment(s), posted {$posted}, gave up on {$expired}."
@@ -105,30 +105,24 @@ class PollPayments extends Command
      * the group's account, so an unanswered one is escalated for somebody to go and
      * look at the provider's dashboard.
      */
-    protected function expireStale(): int
+    protected function expireStale(PaymentIntentService $intents): int
     {
         $expired = 0;
-
-        $collectionCutoff = Carbon::now()->subMinutes(
-            (int) config('payments.collections.poll.give_up_after_minutes', 60)
-        );
 
         $transferCutoff = Carbon::now()->subHours(
             (int) config('payments.transfers.poll.give_up_after_hours', 24)
         );
 
         foreach ($this->inFlight()->get() as $intent) {
-            $started = $intent->initiated_at ?? $intent->created_at;
-
-            if ($intent->isCollection() && $started?->lessThan($collectionCutoff)) {
-                $intent->forceFill([
-                    'status' => PaymentStatus::Abandoned,
-                    'status_reason' => $intent->status_reason ?? 'Nobody approved this payment in time.',
-                ])->save();
+            /* The same cutoff the member's own screen reads, so a prompt this run gives
+               up on is one they were already being offered another attempt at. */
+            if ($intents->abandonStalled($intent)) {
                 $expired++;
 
                 continue;
             }
+
+            $started = $intent->initiated_at ?? $intent->created_at;
 
             if ($intent->isTransfer() && $started?->lessThan($transferCutoff)) {
                 $intent->forceFill([

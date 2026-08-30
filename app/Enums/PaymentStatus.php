@@ -84,14 +84,20 @@ enum PaymentStatus: string
      * forgiving of arriving twice and unforgiving of going backwards: once a payment is
      * `Posted` a late `Successful` webhook must change nothing.
      *
+     * A payment in flight may reach `Settled` without ever being seen at `Successful`:
+     * the provider reports the charge and its settlement in one field, so a poll that
+     * lands after the money has already reached the group's account sees only the
+     * second. Refusing that move would leave the payment in flight forever and never
+     * post money the group has.
+     *
      * @return array<int, self>
      */
     public function allowedTransitions(): array
     {
         return match ($this) {
-            self::Draft => [self::Pending, self::AwaitingAuthorization, self::Successful, self::Failed, self::Abandoned],
-            self::Pending => [self::AwaitingAuthorization, self::Successful, self::Failed, self::Abandoned],
-            self::AwaitingAuthorization => [self::Successful, self::Failed, self::Abandoned],
+            self::Draft => [self::Pending, self::AwaitingAuthorization, self::Successful, self::Settled, self::Failed, self::Abandoned],
+            self::Pending => [self::AwaitingAuthorization, self::Successful, self::Settled, self::Failed, self::Abandoned],
+            self::AwaitingAuthorization => [self::Successful, self::Settled, self::Failed, self::Abandoned],
             self::Successful => [self::Settled, self::Posted, self::NeedsAttention, self::Failed],
             self::Settled => [self::Posted, self::NeedsAttention],
             self::NeedsAttention => [self::Posted, self::Abandoned],

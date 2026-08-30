@@ -10,10 +10,13 @@
 import { useForm } from '@inertiajs/vue3';
 import {
     CalendarClock,
+    CircleCheck,
+    CreditCard,
     HandCoins,
     Lock,
     PiggyBank,
     Receipt,
+    Smartphone,
 } from '@lucide/vue';
 import { computed } from 'vue';
 
@@ -26,6 +29,7 @@ import {
     StatusBadge,
     WindowCountdown,
 } from '@/components/unity';
+import { usePaymentWidget } from '@/composables/usePaymentWidget';
 import MemberLayout from '@/layouts/unity/MemberLayout.vue';
 import { formatMoney } from '@/lib/money';
 import type {
@@ -35,6 +39,7 @@ import type {
     DeclarationMonth,
     DeclarationRules,
 } from '@/types/declarations';
+import type { PaymentIntent } from '@/types/payments';
 
 const props = defineProps<{
     member: { id: number; full_name: string; member_number: number } | null;
@@ -44,7 +49,9 @@ const props = defineProps<{
     rules: DeclarationRules | null;
     eligibility: DeclarationEligibility | null;
     history: Declaration[];
-    abilities: { submit: boolean };
+    /** The payment standing against this month's declaration, if one was started. */
+    payment: PaymentIntent | null;
+    abilities: { submit: boolean; pay: boolean };
 }>();
 
 const form = useForm({
@@ -75,6 +82,16 @@ const canEdit = computed<boolean>(
         (props.declaration === null || props.declaration.abilities.update),
 );
 
+/**
+ * Approved and waiting to be paid: the committee has asked for these figures, so they
+ * are no longer the member's to change and the money can now be sent.
+ */
+const pendingPayment = computed<boolean>(
+    () =>
+        props.declaration?.approved === true &&
+        props.declaration.status !== 'processed',
+);
+
 const savingsCap = computed<number | undefined>(
     () => props.rules?.savings_cap_ngwee ?? undefined,
 );
@@ -89,6 +106,72 @@ const blockingReasons = computed<string[]>(() =>
         .filter((reason) => reason.code !== 'exceeds_savings_multiple')
         .map((reason) => reason.message),
 );
+
+/** What the prompt asks for: savings plus repayment, to the ngwee, and nothing else. */
+const payable = computed<number>(
+    () => props.declaration?.expected_in_ngwee ?? 0,
+);
+
+/** A loan is paid out separately, so it is never netted off what the member is asked. */
+const borrowing = computed<number>(
+    () => props.declaration?.loan_requested_amount_ngwee ?? 0,
+);
+
+const waitingOnPhone = computed<boolean>(() =>
+    ['draft', 'pending', 'awaiting-authorization'].includes(
+        props.payment?.status ?? '',
+    ),
+);
+
+/**
+ * The prompt went out and nobody ever answered it.
+ *
+ * An unapproved handset prompt never comes back as a refusal, it simply goes quiet, so
+ * past the give-up window the server stops treating it as a payment in flight. Saying
+ * so here is what gives the member a way out: the alternative is a screen that asks
+ * them forever to approve something their phone no longer has.
+ */
+const stalled = computed<boolean>(() => props.payment?.has_stalled === true);
+
+const paid = computed<boolean>(() =>
+    ['successful', 'settled', 'posted'].includes(props.payment?.status ?? ''),
+);
+
+const payForm = useForm({ channel: 'mobile_money' });
+
+/* The provider's hosted page, when the member would rather pay by card. Null when no
+   gateway is configured, which is what the card button checks. */
+const { widget, openIfStarted, verify } = usePaymentWidget();
+
+/** Which of the two buttons is waiting on the server, so only that one spins. */
+const paying = computed<'mobile_money' | 'card' | null>(() =>
+    payForm.processing ? (payForm.channel as 'mobile_money' | 'card') : null,
+);
+
+/**
+ * Pays the approved amount, on whichever rail the member picked.
+ *
+ * There is nothing to type either way: the amount is the one the committee approved.
+ * A prompt is answered on the handset; a card hands the member to the provider's own
+ * page, and the money is only believed once the provider is asked.
+ */
+function pay(channel: 'mobile_money' | 'card'): void {
+    payForm.channel = channel;
+
+    payForm.post('/my/declarations/pay', {
+        preserveScroll: true,
+        onSuccess: () => {
+            openIfStarted();
+        },
+    });
+}
+
+/** Asks the provider what became of the payment; the browser is never believed. */
+function checkPayment(): void {
+    if (props.payment) {
+        verify(props.payment.id);
+    }
+}
 
 function submit(): void {
     form.post('/my/declarations', { preserveScroll: true });
@@ -114,9 +197,178 @@ function submit(): void {
                 :seconds-remaining="month.seconds_remaining"
             />
 
+            <!-- Approved: the form is gone, because there is nothing left to decide.
+                 What is left is paying it, which either the member or the treasury
+                 may start. -->
+            <AppCard v-if="pendingPayment && declaration">
+                <div class="flex items-start gap-4">
+                    <span
+                        class="grid size-10 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-700 dark:bg-brand-400/15 dark:text-brand-200"
+                    >
+                        <CircleCheck class="size-5" />
+                    </span>
+
+                    <div class="min-w-0 flex-1 space-y-3">
+                        <div class="space-y-1">
+                            <p
+                                class="text-sm font-semibold text-card-foreground"
+                            >
+                                Your {{ month.label }} declaration is approved
+                            </p>
+                            <p class="text-sm text-muted-foreground">
+                                The committee has accepted your figures, so they
+                                can no longer be changed. Ask the treasurer to
+                                reopen it if something is wrong.
+                            </p>
+                        </div>
+
+                        <div
+                            class="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted px-4 py-3"
+                        >
+                            <span class="text-sm font-medium"
+                                >Due at the table</span
+                            >
+                            <span
+                                class="tabular text-lg font-semibold"
+                                :class="
+                                    declaration.total_expected_payment_ngwee < 0
+                                        ? 'text-destructive'
+                                        : 'text-card-foreground'
+                                "
+                            >
+                                {{
+                                    formatMoney(
+                                        declaration.total_expected_payment_ngwee,
+                                    )
+                                }}
+                            </span>
+                        </div>
+
+                        <!-- The loan is a separate movement: the member brings their
+                             savings and repayment, and the fund pays the loan out to
+                             them when it is disbursed. -->
+                        <p
+                            v-if="borrowing > 0"
+                            class="text-xs text-muted-foreground"
+                        >
+                            You pay {{ formatMoney(payable) }} now. The
+                            {{ formatMoney(borrowing) }} you asked to borrow is
+                            paid out to you separately once the loan is
+                            disbursed.
+                        </p>
+
+                        <div
+                            v-if="paid"
+                            class="rounded-xl border border-border bg-muted px-4 py-3"
+                        >
+                            <p class="text-sm font-medium text-card-foreground">
+                                {{ payment?.member_status_label }}
+                            </p>
+                            <p class="text-xs text-muted-foreground">
+                                {{ formatMoney(payable) }} received for
+                                {{ month.label }}.
+                            </p>
+                        </div>
+
+                        <template v-else>
+                            <!-- One prompt, for the whole of what was approved.
+                                 A live one is shown instead of a second button. -->
+                            <div
+                                v-if="payment && !stalled"
+                                class="rounded-xl border border-border bg-muted px-4 py-3"
+                            >
+                                <p
+                                    class="text-sm font-medium text-card-foreground"
+                                >
+                                    {{ payment.member_status_label }}
+                                </p>
+                                <p
+                                    v-if="payment.status_reason"
+                                    class="text-xs text-muted-foreground"
+                                >
+                                    {{ payment.status_reason }}
+                                </p>
+                            </div>
+
+                            <!-- Nobody approved it. Saying so plainly is the whole
+                                 point: telling a member to approve a prompt their
+                                 phone no longer has is what leaves them stuck. -->
+                            <div
+                                v-else-if="stalled"
+                                class="rounded-xl border border-gold-300 bg-gold-50 px-4 py-3 dark:border-gold-400/30 dark:bg-gold-400/10"
+                            >
+                                <p
+                                    class="text-sm font-medium text-card-foreground"
+                                >
+                                    That prompt was not approved in time
+                                </p>
+                                <p class="text-xs text-muted-foreground">
+                                    {{
+                                        payment?.status_reason ??
+                                        'Nothing was taken from your wallet. Start it again below.'
+                                    }}
+                                </p>
+                            </div>
+
+                            <AppButton
+                                v-if="waitingOnPhone && !stalled"
+                                block
+                                variant="outline"
+                                @click="checkPayment"
+                            >
+                                Check the payment
+                            </AppButton>
+
+                            <template v-if="abilities.pay">
+                                <AppButton
+                                    block
+                                    :loading="paying === 'mobile_money'"
+                                    :disabled="payForm.processing"
+                                    @click="pay('mobile_money')"
+                                >
+                                    <template #icon
+                                        ><Smartphone class="size-4"
+                                    /></template>
+                                    {{
+                                        stalled
+                                            ? 'Try again — send a new prompt'
+                                            : `Pay ${formatMoney(payable)} now`
+                                    }}
+                                </AppButton>
+
+                                <!-- The card never touches this application: the
+                                     provider's own page takes it. -->
+                                <AppButton
+                                    v-if="widget"
+                                    block
+                                    variant="outline"
+                                    :loading="paying === 'card'"
+                                    :disabled="payForm.processing"
+                                    @click="pay('card')"
+                                >
+                                    <template #icon
+                                        ><CreditCard class="size-4"
+                                    /></template>
+                                    Pay by card instead
+                                </AppButton>
+
+                                <p class="text-xs text-muted-foreground">
+                                    The prompt goes to the mobile money number
+                                    on your record — approve it on your handset.
+                                    Card opens the payment provider's own page;
+                                    your card details never reach us. Either way
+                                    it is for the full approved amount; the
+                                    table cannot take part of it.
+                                </p>
+                            </template>
+                        </template>
+                    </div>
+                </div>
+            </AppCard>
+
             <!-- Outside the window the form is replaced entirely rather than
                  disabled, so there is nothing to fill in and be refused. -->
-            <AppCard v-if="!isOpen">
+            <AppCard v-else-if="!isOpen">
                 <div class="flex items-start gap-4">
                     <span
                         class="grid size-10 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground"

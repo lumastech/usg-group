@@ -9,6 +9,7 @@ use App\Domain\Savings\SavingsLedger;
 use App\Enums\MemberRole;
 use App\Enums\PaymentPurpose;
 use App\Enums\PaymentStatus;
+use App\Exceptions\DeclarationNotApprovedException;
 use App\Exceptions\DomainRuleException;
 use App\Exceptions\InvalidSavingsAmountException;
 use App\Exceptions\InvalidSocialFundContributionException;
@@ -37,7 +38,15 @@ beforeEach(function (): void {
 
     $this->initiator = app(CollectionInitiator::class);
 
-    $this->declare = fn ($month, int $saving = 500, string $at = '2026-01-02 10:00') => app(DeclarationService::class)
+    /* Declared and approved: money is only ever collected against a declaration the
+       committee has asked for, so that is the state these tests start from. */
+    $this->declare = function ($month, int $saving = 500, string $at = '2026-01-02 10:00') {
+        $declaration = ($this->declareOnly)($month, $saving, $at);
+
+        return app(DeclarationService::class)->approve($declaration, $this->treasurer);
+    };
+
+    $this->declareOnly = fn ($month, int $saving = 500, string $at = '2026-01-02 10:00') => app(DeclarationService::class)
         ->submit(
             $this->member,
             $month,
@@ -79,6 +88,15 @@ it('holds an online payment to the September cap, exactly as cash is held', func
 it('will not take savings from a member who has not declared', function (): void {
     expect(fn () => $this->initiator->savings($this->member, $this->january, Kwacha::of(500), $this->member))
         ->toThrow(DomainRuleException::class, 'has not declared');
+
+    expect($this->gateway->collections)->toBeEmpty();
+});
+
+it('will not take savings against a declaration the committee has not approved', function (): void {
+    ($this->declareOnly)($this->january);
+
+    expect(fn () => $this->initiator->savings($this->member, $this->january, Kwacha::of(500), $this->member))
+        ->toThrow(DeclarationNotApprovedException::class, 'has not been approved yet');
 
     expect($this->gateway->collections)->toBeEmpty();
 });

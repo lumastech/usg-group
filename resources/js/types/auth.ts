@@ -60,7 +60,8 @@ export type PermissionName =
     | 'governance.record'
     | 'reports.view'
     | 'audit.view'
-    | 'cycles.manage';
+    | 'cycles.manage'
+    | 'cycles.calendar';
 
 /** Where in the month we are. Drives the dashboard banner and form availability. */
 export type CycleWindow =

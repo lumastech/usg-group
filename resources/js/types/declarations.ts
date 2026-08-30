@@ -37,13 +37,19 @@ export type Declaration = {
     loan_requested_amount_ngwee: number;
     /** Signed: negative when the member leaves the table with money. */
     total_expected_payment_ngwee: number;
+    /** What a payment is taken for: savings plus repayment, nothing netted off. */
+    expected_in_ngwee: number;
     submitted_at: string | null;
     is_late: boolean;
+    /** The committee's "ask". Nothing may be collected before it is stamped. */
+    approved: boolean;
+    approved_at: string | null;
+    approved_by?: string | null;
     status: DeclarationStatus;
     status_label: string;
     note: string | null;
     recorded_by?: string | null;
-    abilities: { update: boolean };
+    abilities: { update: boolean; approve: boolean; reopen: boolean };
 };
 
 /** The figures the declaration form opens with. */
@@ -76,6 +82,9 @@ export type DeclarationSheetRow = {
     total_ngwee: number;
     submitted_at: string | null;
     is_late: boolean;
+    approved: boolean;
+    approved_at: string | null;
+    approved_by: string | null;
     status: DeclarationStatus | null;
     status_label: string;
 };

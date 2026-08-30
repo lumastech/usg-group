@@ -52,7 +52,7 @@ class LencoClient
     protected function envelope(string $path, array $query): array
     {
         return $this->unwrap(
-            $this->request(retry: true)->get($this->url($path), $query),
+            $this->attempt($path, fn (): Response => $this->request(retry: true)->get($this->url($path), $query)),
             $path,
         );
     }
@@ -64,10 +64,10 @@ class LencoClient
     public function post(string $path, array $payload = []): array
     {
         return $this->unwrap(
-            $this->request(retry: false)->post($this->url($path), array_filter(
+            $this->attempt($path, fn (): Response => $this->request(retry: false)->post($this->url($path), array_filter(
                 $payload,
                 fn (mixed $value): bool => $value !== null,
-            )),
+            ))),
             $path,
         )['data'];
     }
@@ -142,13 +142,38 @@ class LencoClient
     }
 
     /**
+     * Makes the call, and turns a network failure into this module's own exception.
+     *
+     * A timed-out request is the dangerous one: the provider may well have taken it and
+     * pushed a prompt to the member's handset, and only the answer got lost. It is
+     * flagged as such rather than reported as a refusal, because treating "we do not
+     * know" as "it did not happen" is how the same member is asked for the money twice.
+     *
+     * @param  callable(): Response  $call
+     */
+    protected function attempt(string $path, callable $call): Response
+    {
+        try {
+            return $call();
+        } catch (ConnectionException $exception) {
+            throw new PaymentGatewayException(
+                'The payment provider did not answer in time.',
+                httpStatus: null,
+                context: ['path' => $path],
+                outcomeUnknown: true,
+                previous: $exception,
+            );
+        }
+    }
+
+    /**
      * Checks the envelope, or turns the failure into something the screens can say.
      *
      * @return array{data: array<mixed>, meta: array<string, mixed>}
      */
     protected function unwrap(Response $response, string $path): array
     {
-        $body = $this->decode($response, $path);
+        $body = $this->decode($response);
 
         if ($response->failed() || ($body['status'] ?? false) !== true) {
             throw new PaymentGatewayException(
@@ -171,18 +196,9 @@ class LencoClient
     /**
      * @return array<string, mixed>
      */
-    protected function decode(Response $response, string $path): array
+    protected function decode(Response $response): array
     {
-        try {
-            $body = $response->json();
-        } catch (ConnectionException $exception) {
-            throw new PaymentGatewayException(
-                'Could not reach the payment provider.',
-                httpStatus: null,
-                context: ['path' => $path],
-                previous: $exception,
-            );
-        }
+        $body = $response->json();
 
         return is_array($body) ? $body : [];
     }

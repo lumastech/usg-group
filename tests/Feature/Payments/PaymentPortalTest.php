@@ -203,6 +203,19 @@ it('lets a member pay their own dues from their own phone', function (): void {
     expect(PaymentIntent::count())->toBe(1);
 });
 
+it('sends the member their own payments as a bare list, which is what the screen reads', function (): void {
+    actingAsThatMember();
+
+    PaymentIntent::factory()->for($this->cycle)->for($this->member)->create();
+
+    $this->get(route('my.payments'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('my/Payments')
+            ->has('payments', 1)
+            ->has('payments.0.amount_ngwee'));
+});
+
 it('drafts a card payment without calling the provider, because the widget does that', function (): void {
     actingAsThatMember();
 

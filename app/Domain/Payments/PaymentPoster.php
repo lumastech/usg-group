@@ -112,7 +112,8 @@ class PaymentPoster
     protected function record(PaymentIntent $intent): ?Model
     {
         return match ($intent->purpose) {
-            PaymentPurpose::SavingsContribution => $this->markOnTradingSheet($intent),
+            PaymentPurpose::SavingsContribution,
+            PaymentPurpose::DeclarationSettlement => $this->markOnTradingSheet($intent),
             PaymentPurpose::JoiningFee => $this->postJoiningFee($intent),
             PaymentPurpose::LoanRepayment => $this->postRepayment($intent),
             PaymentPurpose::SocialFundContribution => $this->postFundContribution($intent),
@@ -124,7 +125,11 @@ class PaymentPoster
     }
 
     /**
-     * Savings do not post on arrival — they take their turn on the trading sheet.
+     * Money for the table does not post on arrival — it takes its turn on the sheet.
+     *
+     * A whole declaration paid in one prompt lands here as one figure; `markReceived`
+     * splits it back into savings and repayment against the declaration, exactly as it
+     * would for cash counted at the table.
      *
      * `TradingConcluder::conclude()` is the only thing that posts a month, and the
      * order inside it is the constitution's: missed installments, then interest, then

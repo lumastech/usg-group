@@ -76,6 +76,10 @@ enum MemberRole: string
                 Permission::PaymentsView,
                 Permission::GovernanceRecord,
                 Permission::ReportsView,
+                // Re-dating a month is a decision taken at the table, so both the chair
+                // and the treasury may make it. Opening and closing the cycle itself
+                // (cycles.manage) stays with the administrator.
+                Permission::CyclesCalendar,
                 // The chair holds the group to account, so the audit trail is theirs
                 // to read. The vice deputises for the chair in every other duty and
                 // does here too.
@@ -83,6 +87,10 @@ enum MemberRole: string
                 Permission::SavingsView,
                 Permission::DeclarationsView,
                 Permission::DeclarationsSubmitOwn,
+                // The "ask": accepting a member's declared figures is what turns the
+                // request into something that may be collected. Chair and treasury
+                // both hold it — whoever is at the table on the day.
+                Permission::DeclarationsApprove,
             ],
 
             self::Treasurer, self::ViceTreasurer => [
@@ -100,12 +108,14 @@ enum MemberRole: string
                 Permission::DeclarationsView,
                 Permission::DeclarationsSubmitOwn,
                 Permission::DeclarationsRecord,
+                Permission::DeclarationsApprove,
                 Permission::TradingOperate,
                 Permission::PaymentsView,
                 Permission::PaymentsInitiate,
                 Permission::PaymentsRetry,
                 Permission::PaymentsReconcile,
                 Permission::ReportsView,
+                Permission::CyclesCalendar,
             ],
 
             self::Member => [

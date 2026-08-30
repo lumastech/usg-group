@@ -26,7 +26,7 @@ class DeclarationSheet
      */
     public function for(CycleMonth $month): array
     {
-        $declarations = Declaration::query()->forMonth($month)->get()->keyBy('member_id');
+        $declarations = Declaration::query()->forMonth($month)->with('approvedBy')->get()->keyBy('member_id');
 
         $rows = [];
         $totals = ['saving_ngwee' => 0, 'repayment_ngwee' => 0, 'requested_ngwee' => 0, 'total_ngwee' => 0];
@@ -72,6 +72,11 @@ class DeclarationSheet
             'total_ngwee' => $declaration?->totalExpectedNgwee() ?? 0,
             'submitted_at' => $declaration?->submitted_at?->format('Y-m-d H:i'),
             'is_late' => (bool) $declaration?->is_late,
+            /* The committee's "ask". Nothing may be collected from the member until
+               this is stamped, so the sheet shows it beside the figures. */
+            'approved' => (bool) $declaration?->isApproved(),
+            'approved_at' => $declaration?->approved_at?->format('Y-m-d H:i'),
+            'approved_by' => $declaration?->approvedBy?->full_name,
             'status' => $declaration?->status->value,
             'status_label' => $declaration?->status->label() ?? 'Not declared',
         ];

@@ -8,6 +8,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Domain/Approvals/** | .ai/rules/approvals.md |
 | app/Console/Commands/** | .ai/rules/commands.md |
 | app/Http/Controllers/** | .ai/rules/controllers.md |
+| app/Domain/Cycles/** | .ai/rules/cycles.md |
 | app/Domain/Declarations/** | .ai/rules/declarations.md |
 | app/Domain/** | .ai/rules/domain.md |
 | app/Events/** | .ai/rules/events.md |

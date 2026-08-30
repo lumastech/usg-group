@@ -11,6 +11,7 @@ use App\Exceptions\LoanNotEligibleException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Declarations\StoreDeclarationRequest;
 use App\Http\Resources\DeclarationResource;
+use App\Http\Resources\PaymentIntentResource;
 use App\Models\Cycle;
 use App\Models\CycleMonth;
 use App\Models\Declaration;
@@ -50,12 +51,17 @@ class DeclarationController extends Controller
                 'rules' => null,
                 'eligibility' => null,
                 'history' => [],
-                'abilities' => ['submit' => false],
+                'payment' => null,
+                'abilities' => ['submit' => false, 'pay' => false],
             ]);
         }
 
         $existing = $this->declarations->find($member, $month);
         $ceiling = $this->eligibility->ceilingFor($member, $month->trading_starts_on);
+
+        /* The payment standing against this month's declaration, so the screen can show
+           the prompt the member is meant to be approving rather than offer another. */
+        $payment = $existing?->standingPayment();
 
         return Inertia::render('my/Declarations', [
             'member' => [
@@ -80,8 +86,17 @@ class DeclarationController extends Controller
                     ->sortByDesc(fn (Declaration $row): int => $row->cycleMonth->sequence)
                     ->values(),
             ),
+            'payment' => $payment === null ? null : new PaymentIntentResource($payment),
             'abilities' => [
                 'submit' => $request->user()->can('submitOwn', [Declaration::class, $member]),
+                /* Approved, unpaid, and there is money to collect: CollectionInitiator
+                   applies the same three, and refuses a second prompt. A prompt nobody
+                   answered inside the give-up window is not a second one — it is the
+                   first, dead, and CollectionInitiator releases it on the way through. */
+                'pay' => $existing !== null
+                    && $existing->isApproved()
+                    && $existing->expectedInNgwee() > 0
+                    && ($payment === null || $payment->hasStalled()),
             ],
         ]);
     }

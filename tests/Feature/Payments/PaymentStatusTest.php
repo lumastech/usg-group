@@ -9,6 +9,18 @@ it('lets a payment move forward through its life', function (): void {
         ->and(PaymentStatus::Settled->canTransitionTo(PaymentStatus::Posted))->toBeTrue();
 });
 
+/**
+ * The provider reports the charge and its settlement in one answer, so a poll that
+ * lands after the money has reached the group's account never sees `Successful` at all.
+ * Refusing the jump would strand the payment in flight and never post money the group
+ * is holding.
+ */
+it('lets a payment in flight land on settled without passing through successful', function (): void {
+    expect(PaymentStatus::AwaitingAuthorization->canTransitionTo(PaymentStatus::Settled))->toBeTrue()
+        ->and(PaymentStatus::Pending->canTransitionTo(PaymentStatus::Settled))->toBeTrue()
+        ->and(PaymentStatus::Draft->canTransitionTo(PaymentStatus::Settled))->toBeTrue();
+});
+
 it('never lets a posted payment be reopened by a late webhook', function (PaymentStatus $next): void {
     expect(PaymentStatus::Posted->canTransitionTo($next))->toBeFalse();
 })->with([

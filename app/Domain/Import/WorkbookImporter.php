@@ -263,7 +263,11 @@ class WorkbookImporter
         );
     }
 
-    /** A declaration is a promise the month already kept, so it is imported settled. */
+    /**
+     * A declaration is a promise the month already kept, so it is imported settled:
+     * stamped approved and locked, never sitting on the sheet as a request the
+     * committee still has to ask for.
+     */
     protected function postDeclaration(Cycle $cycle, Member $member, CycleMonth $month, array $row, Member $actor): void
     {
         $repayment = $row['extra']['repayment_ngwee'] ?? 0;
@@ -279,8 +283,10 @@ class WorkbookImporter
             'total_expected_payment_ngwee' => Kwacha::ofNgwee($row['amount_ngwee'] + $repayment),
             'submitted_at' => $month->declarations_close_at,
             'is_late' => false,
-            'status' => DeclarationStatus::Submitted,
+            'approved_at' => $month->declarations_close_at,
+            'status' => DeclarationStatus::Locked,
             'recorded_by_member_id' => $actor->id,
+            'approved_by_member_id' => $actor->id,
             'note' => 'Imported from the group workbook',
         ]);
     }

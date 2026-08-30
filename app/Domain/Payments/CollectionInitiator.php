@@ -13,6 +13,7 @@ use App\Enums\PaymentPurpose;
 use App\Exceptions\DomainRuleException;
 use App\Models\Cycle;
 use App\Models\CycleMonth;
+use App\Models\Declaration;
 use App\Models\Loan;
 use App\Models\Member;
 use App\Models\PaymentIntent;
@@ -43,10 +44,10 @@ class CollectionInitiator
     /**
      * The month's savings, paid from a handset instead of across the table.
      *
-     * A declaration is required, because the trading sheet is built from declarations
-     * and a member with no row on it has nowhere for the money to land. That is the
-     * same position they would be in turning up with cash, so it is not a rule this
-     * module is inventing.
+     * An approved declaration is required. The trading sheet is built from
+     * declarations, so a member with no row on it has nowhere for the money to land;
+     * and a row the committee has not yet asked for is still a request they may send
+     * back, which is not something to take money against.
      */
     public function savings(
         Member $member,
@@ -58,12 +59,7 @@ class CollectionInitiator
     ): PaymentIntent {
         $this->savings->assertValidContribution($member, $month, $amount);
 
-        if ($this->declarations->find($member, $month) === null) {
-            throw DomainRuleException::make(
-                "{$member->full_name} has not declared for {$month->label()}, so there is nowhere to record this "
-                    .'payment. The declaration has to come first.'
-            );
-        }
+        $this->declarations->assertPayable($member, $month);
 
         return $this->start(
             PaymentPurpose::SavingsContribution,
@@ -75,6 +71,115 @@ class CollectionInitiator
             phone: $phone,
             operator: $operator,
         );
+    }
+
+    /**
+     * The whole of one month's approved declaration, in a single prompt.
+     *
+     * The member is asked for what the committee approved — savings plus repayment,
+     * to the ngwee — and for nothing else: a part payment leaves a variance on the
+     * sheet for the table to chase, and a second prompt against the same declaration
+     * would take the money twice. Anything the member is borrowing is not netted off
+     * here; the loan is paid out to them separately once it is disbursed.
+     *
+     * The amount lands on the trading sheet as one figure and is split back into
+     * savings and repayment when it is marked received, exactly as cash would be.
+     */
+    public function declaration(
+        Declaration $declaration,
+        Member $actor,
+        ?string $phone = null,
+        ?MobileMoneyOperator $operator = null,
+    ): PaymentIntent {
+        $ngwee = $this->assertDeclarationCollectable($declaration);
+
+        return $this->start(
+            PaymentPurpose::DeclarationSettlement,
+            $declaration->member,
+            Kwacha::ofNgwee($ngwee),
+            $actor,
+            $declaration->cycleMonth->cycle,
+            payable: $declaration,
+            month: $declaration->cycleMonth,
+            phone: $phone,
+            operator: $operator,
+        );
+    }
+
+    /**
+     * The same declaration, paid on the provider's hosted page instead of a handset.
+     *
+     * Nothing is sent anywhere: the intent is written down so the reference exists, and
+     * the member finishes the payment in the widget, which is also the only place a
+     * card number is ever typed. It is the same amount and the same refusals as the
+     * prompt — a card must not be a way around a rule that stops a phone.
+     */
+    public function declarationByCard(Declaration $declaration, Member $actor): PaymentIntent
+    {
+        $ngwee = $this->assertDeclarationCollectable($declaration);
+
+        $this->assertAboveMinimum($ngwee);
+
+        return $this->intents->create(
+            cycle: $declaration->cycleMonth->cycle,
+            purpose: PaymentPurpose::DeclarationSettlement,
+            amountNgwee: $ngwee,
+            channel: PaymentChannel::Card,
+            member: $declaration->member,
+            payable: $declaration,
+            month: $declaration->cycleMonth,
+            requestedBy: $actor,
+        );
+    }
+
+    /**
+     * Every reason a declaration may not be collected against, and what it is worth.
+     *
+     * Applied whichever rail the money comes in on, so the two roads out of the
+     * declaration screen can never disagree about what is owed or whether it is due.
+     */
+    protected function assertDeclarationCollectable(Declaration $declaration): int
+    {
+        $member = $declaration->member;
+        $month = $declaration->cycleMonth;
+
+        $this->declarations->assertPayable($member, $month);
+
+        $standing = $declaration->standingPayment();
+
+        /* A prompt nobody answered is not a payment in flight, it is a payment that
+           never happened. Released here rather than left standing, or the member is
+           locked out of paying by an attempt that will never conclude. */
+        if ($standing !== null && $this->intents->abandonStalled($standing)) {
+            $standing = $declaration->standingPayment();
+        }
+
+        if ($standing !== null) {
+            throw DomainRuleException::make(
+                $standing->status->hasSucceeded()
+                    ? "The {$month->label()} declaration has already been paid."
+                    : 'A payment for this declaration has already been started — approve the prompt on '
+                        .'your phone, or wait for it to time out before starting another.'
+            );
+        }
+
+        $ngwee = $declaration->expectedInNgwee();
+
+        if ($ngwee <= 0) {
+            throw DomainRuleException::make(
+                "There is nothing to collect for {$month->label()}: the declaration brings no money to the table."
+            );
+        }
+
+        /* The savings half is checked against the ledger that will take it, so a
+           declaration approved before a rule changed cannot be collected against. */
+        $this->savings->assertValidContribution(
+            $member,
+            $month,
+            Kwacha::ofNgwee($declaration->getRawOriginal('saving_amount_ngwee')),
+        );
+
+        return $ngwee;
     }
 
     public function joiningFee(
@@ -173,13 +278,8 @@ class CollectionInitiator
         ?MobileMoneyOperator $operator = null,
     ): PaymentIntent {
         $ngwee = Kwacha::toNgwee($amount);
-        $minimum = (int) config('payments.collections.min_ngwee', 100);
 
-        if ($ngwee < $minimum) {
-            throw DomainRuleException::make(
-                'A payment must be at least '.Kwacha::format($minimum).'.'
-            );
-        }
+        $this->assertAboveMinimum($ngwee);
 
         $number = $phone ?? $member->phone;
 
@@ -204,5 +304,17 @@ class CollectionInitiator
             $intent,
             CollectionRequest::from($intent, $number, $operator ?? LencoOperator::forPhone($number)),
         );
+    }
+
+    /** The floor the provider will not go below, checked before anything is written. */
+    protected function assertAboveMinimum(int $ngwee): void
+    {
+        $minimum = (int) config('payments.collections.min_ngwee', 100);
+
+        if ($ngwee < $minimum) {
+            throw DomainRuleException::make(
+                'A payment must be at least '.Kwacha::format($minimum).'.'
+            );
+        }
     }
 }

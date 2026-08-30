@@ -54,6 +54,8 @@ class PaymentIntentResource extends JsonResource
 
             'attempt' => $this->attempt,
             'is_posted' => $this->isPosted(),
+            /* An unanswered prompt the member may now give up on and try again. */
+            'has_stalled' => $this->hasStalled(),
             'initiated_at' => $this->initiated_at?->toIso8601String(),
             'completed_at' => $this->completed_at?->toIso8601String(),
             'settled_at' => $this->settled_at?->toIso8601String(),

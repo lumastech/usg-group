@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\DeclarationStatus;
 use App\Enums\MemberStatus;
 use App\Enums\Permission;
 use App\Models\Declaration;
@@ -45,6 +46,27 @@ class DeclarationPolicy
     {
         return $user->can(Permission::DeclarationsRecord->value)
             && $member->status === MemberStatus::Active;
+    }
+
+    /**
+     * The committee's "ask": accepting the figures so the member can be charged.
+     *
+     * Allowed on a declaration that is already Locked as well, because the trading
+     * session opens on the 4th and a member arriving to pay on the 5th still needs
+     * somebody to have accepted their figures.
+     */
+    public function approve(User $user, Declaration $declaration): bool
+    {
+        return $user->can(Permission::DeclarationsApprove->value)
+            && ! $declaration->isApproved()
+            && $declaration->status !== DeclarationStatus::Processed;
+    }
+
+    /** Handing an approved declaration back to the member, before the month locks. */
+    public function reopen(User $user, Declaration $declaration): bool
+    {
+        return $user->can(Permission::DeclarationsApprove->value)
+            && $declaration->status === DeclarationStatus::Approved;
     }
 
     /** A locked or processed declaration is read-only for everybody. */

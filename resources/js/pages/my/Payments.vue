@@ -10,7 +10,7 @@
  * Whichever way, the browser is never believed about whether the money moved: the
  * verify step asks the provider, and the ledgers only take it from there.
  */
-import { router, useForm, usePage } from '@inertiajs/vue3';
+import { useForm } from '@inertiajs/vue3';
 import { CreditCard, Smartphone } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
@@ -25,11 +25,12 @@ import {
     StatusBadge,
     TextInput,
 } from '@/components/unity';
+import { usePaymentWidget } from '@/composables/usePaymentWidget';
 import MemberLayout from '@/layouts/unity/MemberLayout.vue';
 import type { PaymentIntent, PaymentWidgetConfig } from '@/types/payments';
 
 const props = defineProps<{
-    payments: { data: PaymentIntent[] };
+    payments: PaymentIntent[];
     widget: PaymentWidgetConfig | null;
     owing: {
         savings_ngwee: number | null;
@@ -44,7 +45,9 @@ const props = defineProps<{
     month: { id: number; label: string } | null;
 }>();
 
-const page = usePage();
+/* Card details are only ever typed into the provider's own page; the same handover
+   the declaration screen uses, so the two cannot drift apart. */
+const { openIfStarted, verify } = usePaymentWidget();
 
 const form = useForm({
     purpose: 'savings_contribution',
@@ -60,8 +63,14 @@ const busy = ref(false);
 const purposes = computed(() => {
     const options: { value: string; label: string }[] = [];
 
-    if (props.owing?.savings_ngwee !== null && props.owing?.savings_ngwee !== undefined) {
-        options.push({ value: 'savings_contribution', label: 'Monthly savings' });
+    if (
+        props.owing?.savings_ngwee !== null &&
+        props.owing?.savings_ngwee !== undefined
+    ) {
+        options.push({
+            value: 'savings_contribution',
+            label: 'Monthly savings',
+        });
     }
 
     if (props.owing?.joining_fee_ngwee) {
@@ -69,7 +78,10 @@ const purposes = computed(() => {
     }
 
     if (props.owing?.social_fund_ngwee) {
-        options.push({ value: 'social_fund_contribution', label: 'Social fund' });
+        options.push({
+            value: 'social_fund_contribution',
+            label: 'Social fund',
+        });
     }
 
     if (props.owing?.loan) {
@@ -111,17 +123,14 @@ function pay(channel: 'mobile_money' | 'card'): void {
         ...data,
         channel,
         cycle_month_id: props.month?.id ?? null,
-        loan_id: data.purpose === 'loan_repayment' ? (props.owing?.loan?.id ?? null) : null,
+        loan_id:
+            data.purpose === 'loan_repayment'
+                ? (props.owing?.loan?.id ?? null)
+                : null,
     })).post('/my/payments', {
         preserveScroll: true,
         onSuccess: () => {
-            const started = page.props.flash as Record<string, unknown>;
-            const payment = (started?.startedPayment ??
-                null) as { id: number; reference: string; amount_ngwee: number; channel: string } | null;
-
-            if (payment && payment.channel === 'card') {
-                openWidget(payment);
-
+            if (openIfStarted()) {
                 return;
             }
 
@@ -131,63 +140,6 @@ function pay(channel: 'mobile_money' | 'card'): void {
             busy.value = false;
         },
     });
-}
-
-/**
- * Hands the member over to the provider's hosted page.
- *
- * The script is loaded on demand rather than on every visit — most visits to this
- * screen are to look at a payment already made, and a member on a village connection
- * should not pay for a script they are not going to use.
- */
-function openWidget(payment: {
-    id: number;
-    reference: string;
-    amount_ngwee: number;
-}): void {
-    const config = props.widget;
-
-    if (!config) {
-        return;
-    }
-
-    loadScript(config.script).then(() => {
-        const lenco = (window as unknown as Record<string, any>).LencoPay;
-
-        if (!lenco) {
-            return;
-        }
-
-        lenco.getPaid({
-            key: config.key,
-            reference: payment.reference,
-            email: (page.props.auth as any)?.user?.email ?? '',
-            amount: payment.amount_ngwee / 100,
-            currency: 'ZMW',
-            channels: config.channels,
-            onSuccess: () => verify(payment.id),
-            onConfirmationPending: () => verify(payment.id),
-            onClose: () => verify(payment.id),
-        });
-    });
-}
-
-function loadScript(src: string): Promise<void> {
-    if (document.querySelector(`script[src="${src}"]`)) {
-        return Promise.resolve();
-    }
-
-    return new Promise((resolve, reject) => {
-        const element = document.createElement('script');
-        element.src = src;
-        element.onload = () => resolve();
-        element.onerror = () => reject(new Error('script failed'));
-        document.head.appendChild(element);
-    });
-}
-
-function verify(id: number): void {
-    router.post(`/my/payments/${id}/verify`, {}, { preserveScroll: true });
 }
 
 function when(value: string | null): string {
@@ -220,7 +172,10 @@ function when(value: string | null): string {
                 description="The provider's fee is added to what you pay, so the group receives the round figure."
             >
                 <div class="space-y-4">
-                    <FormField label="What are you paying?" :error="form.errors.purpose">
+                    <FormField
+                        label="What are you paying?"
+                        :error="form.errors.purpose"
+                    >
                         <template #default="{ id, invalid }">
                             <SelectInput
                                 :id="id"
@@ -315,14 +270,14 @@ function when(value: string | null): string {
 
             <AppCard title="Your payments" flush>
                 <EmptyState
-                    v-if="payments.data.length === 0"
+                    v-if="payments.length === 0"
                     title="No payments yet"
                     description="Anything you pay from this phone will be listed here."
                 />
 
                 <ul v-else class="divide-y">
                     <li
-                        v-for="payment in payments.data"
+                        v-for="payment in payments"
                         :key="payment.id"
                         class="flex items-center justify-between gap-3 p-4"
                     >
@@ -334,7 +289,11 @@ function when(value: string | null): string {
                                 >
                             </p>
                             <p class="text-sm text-muted-foreground">
-                                {{ payment.member_status_label }}
+                                {{
+                                    payment.has_stalled
+                                        ? 'Not approved in time — nothing was taken'
+                                        : payment.member_status_label
+                                }}
                                 <span v-if="payment.created_at">
                                     · {{ when(payment.created_at) }}</span
                                 >
@@ -356,7 +315,7 @@ function when(value: string | null): string {
                                 variant="ghost"
                                 @click="verify(payment.id)"
                             >
-                                Check
+                                {{ payment.has_stalled ? 'Clear' : 'Check' }}
                             </AppButton>
                         </div>
                     </li>

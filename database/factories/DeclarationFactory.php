@@ -42,6 +42,15 @@ class DeclarationFactory extends Factory
         ]);
     }
 
+    /** The committee has asked for it: no longer editable, and payable. */
+    public function approved(): static
+    {
+        return $this->state([
+            'status' => DeclarationStatus::Approved,
+            'approved_at' => now(),
+        ]);
+    }
+
     public function locked(): static
     {
         return $this->state(['status' => DeclarationStatus::Locked]);

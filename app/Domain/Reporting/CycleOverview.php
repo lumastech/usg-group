@@ -271,7 +271,13 @@ class CycleOverview
                 ->where('cycle_month_id', $month->id)
                 ->where('is_late', true)
                 ->count(),
+            /* Every declaration made for the month, whatever stage it has reached —
+               approving one must not make it vanish from the count of who declared. */
             'declarations_submitted_this_month' => $month === null ? 0 : (int) Declaration::query()
+                ->acrossCycles()
+                ->where('cycle_month_id', $month->id)
+                ->count(),
+            'declarations_awaiting_approval' => $month === null ? 0 : (int) Declaration::query()
                 ->acrossCycles()
                 ->where('cycle_month_id', $month->id)
                 ->where('status', DeclarationStatus::Submitted->value)

@@ -190,6 +190,62 @@ class PaymentIntent extends Model
         return $this->direction->isTransfer();
     }
 
+    /**
+     * A collection nobody ever answered.
+     *
+     * Mobile money is authorised on a handset, so a prompt that is not approved simply
+     * stops existing for the member — no refusal ever comes back, and the intent would
+     * otherwise sit in flight forever, blocking the next attempt at the same thing.
+     * Past the give-up window it is treated as gone, which is the same cutoff
+     * `unity:poll-payments` uses; the rule lives here so the poller, the member's own
+     * screen and the next attempt cannot disagree about when a prompt is dead.
+     *
+     * Never true of a transfer: money may have left the group's account, and giving up
+     * on that is a person's job, not a clock's.
+     */
+    public function hasStalled(): bool
+    {
+        if (! $this->isCollection() || ! $this->status->isInFlight()) {
+            return false;
+        }
+
+        if ($this->wasNeverSent()) {
+            return true;
+        }
+
+        $started = $this->initiated_at ?? $this->created_at;
+
+        return $started !== null && $started->lessThan(Carbon::now()->subMinutes(
+            (int) config('payments.collections.poll.give_up_after_minutes', 60)
+        ));
+    }
+
+    /**
+     * Written down, but never actually handed to the provider.
+     *
+     * A push that died between `create()` and `sendCollection()` leaves a Draft with no
+     * `initiated_at`: the request never left this application, so no money can have
+     * moved and the member should not wait out the whole give-up window for a prompt
+     * that was never sent. The grace is the poll interval, comfortably longer than the
+     * gateway's own timeout and retries — without it, a double-tapped button could
+     * abandon an attempt whose call is still in flight, and charge the member twice.
+     *
+     * A card draft is deliberately not this: the member may be inside the provider's
+     * hosted page with it open right now, and that one waits out the full window.
+     */
+    protected function wasNeverSent(): bool
+    {
+        if ($this->status !== PaymentStatus::Draft
+            || $this->channel === PaymentChannel::Card
+            || $this->initiated_at !== null) {
+            return false;
+        }
+
+        return $this->created_at?->lessThan(Carbon::now()->subMinutes(
+            (int) config('payments.collections.poll.every_minutes', 5)
+        )) === true;
+    }
+
     /** Whether the ledgers already have this money. */
     public function isPosted(): bool
     {
