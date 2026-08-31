@@ -108,6 +108,9 @@ class HandleInertiaRequests extends Middleware
             'email_verified_at' => $user->email_verified_at,
             'member_id' => $member?->id,
             'member_number' => $member?->member_number,
+            /* The member's own number, so the provider's hosted payment page opens
+               filled in rather than asking them to type it on a phone. */
+            'phone' => $member?->phone,
             'roles' => $user->getRoleNames()->values()->all(),
             'permissions' => $user->getAllPermissions()->pluck('name')->values()->all(),
         ];

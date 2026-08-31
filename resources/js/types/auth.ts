@@ -15,6 +15,8 @@ export type User = {
     two_factor_enabled?: boolean;
     member_id: number | null;
     member_number: number | null;
+    /** The member's own mobile number, used to prefill the provider's payment page. */
+    phone?: string | null;
     roles: MemberRoleName[];
     permissions: PermissionName[];
     [key: string]: unknown;

@@ -141,7 +141,12 @@ const payForm = useForm({ channel: 'mobile_money' });
 
 /* The provider's hosted page, when the member would rather pay by card. Null when no
    gateway is configured, which is what the card button checks. */
-const { widget, openIfStarted, verify } = usePaymentWidget();
+const {
+    widget,
+    error: widgetError,
+    openIfStarted,
+    verify,
+} = usePaymentWidget();
 
 /** Which of the two buttons is waiting on the server, so only that one spins. */
 const paying = computed<'mobile_money' | 'card' | null>(() =>
@@ -318,6 +323,16 @@ function submit(): void {
                             >
                                 Check the payment
                             </AppButton>
+
+                            <!-- The provider's own page never came up. Saying so is
+                                 the point: the spinner it leaves behind says nothing,
+                                 and the phone prompt is still there to be used. -->
+                            <p
+                                v-if="widgetError"
+                                class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-900 dark:border-red-500/30 dark:bg-red-950 dark:text-red-100"
+                            >
+                                {{ widgetError }}
+                            </p>
 
                             <template v-if="abilities.pay">
                                 <AppButton

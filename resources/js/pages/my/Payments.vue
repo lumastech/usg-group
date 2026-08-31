@@ -47,7 +47,7 @@ const props = defineProps<{
 
 /* Card details are only ever typed into the provider's own page; the same handover
    the declaration screen uses, so the two cannot drift apart. */
-const { openIfStarted, verify } = usePaymentWidget();
+const { error: widgetError, openIfStarted, verify } = usePaymentWidget();
 
 const form = useForm({
     purpose: 'savings_contribution',
@@ -230,6 +230,16 @@ function when(value: string | null): string {
                             />
                         </template>
                     </FormField>
+
+                    <!-- The provider's own page never came up. The spinner it
+                         leaves behind says nothing, and the phone prompt is still
+                         there to be used. -->
+                    <p
+                        v-if="widgetError"
+                        class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-900 dark:border-red-500/30 dark:bg-red-950 dark:text-red-100"
+                    >
+                        {{ widgetError }}
+                    </p>
 
                     <div class="grid gap-2 sm:grid-cols-2">
                         <AppButton
