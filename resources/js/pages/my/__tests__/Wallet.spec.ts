@@ -2,12 +2,13 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { reactive } from 'vue';
 
-import type { PayoutDestination } from '@/types/payments';
+import type { PaymentIntent, PayoutDestination } from '@/types/payments';
 import type { Wallet as MemberWallet, WalletEntry } from '@/types/wallets';
 import WalletPage from '../Wallet.vue';
 
 const post = vi.fn();
 const openIfStarted = vi.fn(() => false);
+const verify = vi.fn();
 
 // The page talks to the server through Inertia; stub it so the test stays in-process.
 vi.mock('@inertiajs/vue3', () => ({
@@ -31,6 +32,7 @@ vi.mock('@/composables/usePaymentWidget', () => ({
     usePaymentWidget: () => ({
         error: { value: null },
         openIfStarted,
+        verify,
     }),
 }));
 
@@ -76,6 +78,23 @@ function destination(): PayoutDestination {
     } as PayoutDestination;
 }
 
+/** A top-up the member has started that has not reached the wallet yet. */
+function topUp(overrides: Partial<PaymentIntent> = {}): PaymentIntent {
+    return {
+        id: 12,
+        reference: 'usg-top-12-1',
+        status: 'awaiting-authorization',
+        member_status_label: 'Approve the prompt on your phone',
+        status_reason: null,
+        channel: 'mobile_money',
+        channel_label: 'Mobile money',
+        amount_ngwee: 50_000,
+        has_stalled: false,
+        is_posted: false,
+        ...overrides,
+    } as PaymentIntent;
+}
+
 function entry(overrides: Partial<WalletEntry> = {}): WalletEntry {
     return {
         id: 1,
@@ -98,6 +117,7 @@ function render(props: Partial<Record<string, unknown>> = {}) {
             wallet: wallet(),
             statement: [entry()],
             destinations: [destination()],
+            topUps: [],
             widget: null,
             limits: {
                 top_up_min_ngwee: 100,
@@ -147,6 +167,29 @@ describe('my/Wallet', () => {
             .find((button) => button.text().includes('Withdraw'));
 
         expect(withdraw?.attributes('disabled')).toBeDefined();
+    });
+
+    /* A member who approves a prompt is quicker than the webhook and the poller both.
+       An unchanged balance with nothing to press is what makes somebody pay twice. */
+    it('shows a top-up still in flight and offers to check it', async () => {
+        const page = render({ topUps: [topUp()] });
+
+        expect(page.text()).toContain('Approve the prompt on your phone');
+
+        const check = page
+            .findAll('button')
+            .find((button) => button.text().includes('Check the payment'));
+
+        await check?.trigger('click');
+
+        expect(verify).toHaveBeenCalledWith(12);
+    });
+
+    it('says plainly when a prompt was never approved', () => {
+        const page = render({ topUps: [topUp({ has_stalled: true })] });
+
+        expect(page.text()).toContain('That prompt was not approved in time');
+        expect(page.text()).not.toContain('Approve the prompt on your phone');
     });
 
     it('starts a top-up on the rail the member picked', async () => {

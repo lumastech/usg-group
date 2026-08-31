@@ -12,11 +12,14 @@ use App\Domain\Wallets\WalletPayments;
 use App\Domain\Wallets\WalletRegistry;
 use App\Domain\Wallets\WithdrawalService;
 use App\Enums\PaymentChannel;
+use App\Enums\PaymentPurpose;
+use App\Enums\PaymentStatus;
 use App\Exceptions\DomainRuleException;
 use App\Exceptions\PaymentGatewayException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Wallets\StoreTopUpRequest;
 use App\Http\Requests\Wallets\StoreWithdrawalRequest;
+use App\Http\Resources\PaymentIntentResource;
 use App\Http\Resources\PayoutDestinationResource;
 use App\Http\Resources\WalletEntryResource;
 use App\Http\Resources\WalletResource;
@@ -24,6 +27,7 @@ use App\Models\Member;
 use App\Models\PaymentIntent;
 use App\Models\PayoutDestination;
 use App\Support\Kwacha;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -64,6 +68,7 @@ class WalletController extends Controller
             'destinations' => PayoutDestinationResource::collection(
                 $member->payoutDestinations()->orderByDesc('is_default')->get()
             ),
+            'topUps' => PaymentIntentResource::collection($this->topUpsInFlight($member)),
             'widget' => $gateway->widgetConfig(),
             'limits' => [
                 'top_up_min_ngwee' => (int) config('wallets.top_ups.min_ngwee', 100),
@@ -152,12 +157,63 @@ class WalletController extends Controller
         try {
             $this->intents->refresh($intent);
         } catch (PaymentGatewayException $exception) {
+            /* A card the member opened and closed without paying: the provider has
+               never heard of the reference, because nothing was ever sent. Released
+               rather than left standing, or the top-up sits on the screen forever. Only
+               on a definite refusal — a timeout says nothing about the money. */
+            if ($intent->status === PaymentStatus::Draft && ! $exception->isRetryable()) {
+                $this->intents->abandonDraft($intent, 'Closed without paying.');
+
+                return back()->with('info', 'That top-up was not completed, so nothing was taken. You can try again.');
+            }
+
             return back()->with('error', $exception->reason());
         }
 
         $this->poster->post($intent->refresh());
 
+        /* Still nothing, long after the prompt went out. Asking the provider first is
+           what makes this safe: money that did move has already been credited above,
+           so what is released here is an attempt that never happened. */
+        if ($this->intents->abandonStalled($intent->refresh())) {
+            return back()->with(
+                'info',
+                'That prompt was never approved, so nothing was taken. You can try again.'
+            );
+        }
+
         return back()->with('success', $intent->refresh()->status->memberLabel().'.');
+    }
+
+    /**
+     * Top-ups the member has started that have not reached the wallet yet.
+     *
+     * A member who approves a prompt is quicker than everything that credits them: the
+     * webhook has to arrive and the poller runs on its own clock. Without the payment
+     * on the screen they are left looking at a balance that has not moved, with nothing
+     * to press and nothing to explain why — which is exactly the state that makes
+     * somebody pay a second time. Every other member payment screen surfaces the
+     * payment in flight and offers to check it; this is the wallet's.
+     *
+     * Posted ones are gone from here because they are in the statement below, and
+     * failed or abandoned ones because nothing moved and there is nothing to wait for.
+     *
+     * @return Collection<int, PaymentIntent>
+     */
+    protected function topUpsInFlight(Member $member): Collection
+    {
+        return PaymentIntent::query()
+            ->acrossCycles()
+            ->where('member_id', $member->id)
+            ->where('purpose', PaymentPurpose::WalletTopUp->value)
+            ->whereNotIn('status', [
+                PaymentStatus::Posted->value,
+                PaymentStatus::Failed->value,
+                PaymentStatus::Abandoned->value,
+            ])
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get();
     }
 
     /**

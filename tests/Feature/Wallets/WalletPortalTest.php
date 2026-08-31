@@ -9,6 +9,7 @@ use App\Enums\MemberRole;
 use App\Enums\PaymentPurpose;
 use App\Enums\PaymentStatus;
 use App\Enums\WalletEntryType;
+use App\Exceptions\PaymentGatewayException;
 use App\Models\Cycle;
 use App\Models\Member;
 use App\Models\PayoutDestination;
@@ -210,4 +211,97 @@ it('shows one member\'s statement to the committee', function (): void {
         ->assertInertia(fn ($page) => $page
             ->component('app/wallets/Show')
             ->has('statement', 1));
+});
+
+/**
+ * The credit for an approved top-up arrives by webhook or by the poller, and a member
+ * standing in front of the screen is quicker than either. What they must never see is
+ * an unchanged balance with nothing to press: that is the state that makes somebody
+ * pay a second time.
+ */
+it('shows a member the top-up still waiting on their phone', function (): void {
+    $this->actingAs($this->memberUser)
+        ->post(route('my.wallet.top-up'), [
+            'amount_ngwee' => 50_000,
+            'channel' => 'mobile_money',
+        ])->assertRedirect();
+
+    $this->actingAs($this->memberUser)
+        ->get(route('my.wallet'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('my/Wallet')
+            ->where('wallet.balance_ngwee', 0)
+            ->has('topUps', 1)
+            ->where('topUps.0.status', PaymentStatus::AwaitingAuthorization->value)
+            ->where('topUps.0.amount_ngwee', 50_000)
+            ->where('topUps.0.has_stalled', false));
+});
+
+it('credits the wallet when the member checks a top-up they have approved', function (): void {
+    $this->actingAs($this->memberUser)
+        ->post(route('my.wallet.top-up'), [
+            'amount_ngwee' => 50_000,
+            'channel' => 'mobile_money',
+        ])->assertRedirect();
+
+    $intent = $this->member->paymentIntents()->sole();
+
+    /* The member approved the prompt; nothing has told this system so yet. */
+    $this->gateway->statusAnswer = PaymentStatus::Successful;
+
+    $this->actingAs($this->memberUser)
+        ->post(route('my.wallet.verify', $intent))
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect(Kwacha::toNgwee($this->wallet->balance()))->toBe(50_000)
+        ->and($intent->refresh()->status)->toBe(PaymentStatus::Posted);
+
+    /* Credited money belongs on the statement, not in the list of things still coming. */
+    $this->actingAs($this->memberUser)
+        ->get(route('my.wallet'))
+        ->assertInertia(fn ($page) => $page
+            ->where('wallet.balance_ngwee', 50_000)
+            ->has('topUps', 0));
+});
+
+it('releases a top-up prompt nobody ever approved', function (): void {
+    $this->actingAs($this->memberUser)
+        ->post(route('my.wallet.top-up'), [
+            'amount_ngwee' => 50_000,
+            'channel' => 'mobile_money',
+        ])->assertRedirect();
+
+    $intent = $this->member->paymentIntents()->sole();
+
+    $this->travel((int) config('payments.collections.poll.give_up_after_minutes', 60) + 1)->minutes();
+
+    $this->actingAs($this->memberUser)
+        ->post(route('my.wallet.verify', $intent))
+        ->assertRedirect()
+        ->assertSessionHas('info');
+
+    expect($intent->refresh()->status)->toBe(PaymentStatus::Abandoned)
+        ->and(Kwacha::toNgwee($this->wallet->balance()))->toBe(0);
+});
+
+it('releases a card top-up the member opened and closed', function (): void {
+    $this->actingAs($this->memberUser)
+        ->post(route('my.wallet.top-up'), [
+            'amount_ngwee' => 50_000,
+            'channel' => 'card',
+        ])->assertRedirect();
+
+    $intent = $this->member->paymentIntents()->sole();
+
+    /* The provider has never heard of the reference: nothing was ever sent. */
+    $this->gateway->throw = new PaymentGatewayException('No transaction found for that reference.', httpStatus: 404);
+
+    $this->actingAs($this->memberUser)
+        ->post(route('my.wallet.verify', $intent))
+        ->assertRedirect()
+        ->assertSessionHas('info');
+
+    expect($intent->refresh()->status)->toBe(PaymentStatus::Abandoned);
 });

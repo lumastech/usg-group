@@ -32,13 +32,19 @@ import {
 } from '@/components/unity';
 import { usePaymentWidget } from '@/composables/usePaymentWidget';
 import MemberLayout from '@/layouts/unity/MemberLayout.vue';
-import type { PaymentWidgetConfig, PayoutDestination } from '@/types/payments';
+import type {
+    PaymentIntent,
+    PaymentWidgetConfig,
+    PayoutDestination,
+} from '@/types/payments';
 import type { Wallet, WalletEntry, WalletLimits } from '@/types/wallets';
 
 const props = defineProps<{
     wallet: Wallet;
     statement: WalletEntry[];
     destinations: PayoutDestination[];
+    /** Top-ups already started that have not reached the wallet yet. */
+    topUps: PaymentIntent[];
     widget: PaymentWidgetConfig | null;
     limits: WalletLimits;
     phone: string | null;
@@ -46,7 +52,11 @@ const props = defineProps<{
 
 /* The same handover the other payment screens use, pointed at this screen's own
    verify route — the browser is never believed about whether money moved. */
-const { error: widgetError, openIfStarted } = usePaymentWidget({
+const {
+    error: widgetError,
+    openIfStarted,
+    verify,
+} = usePaymentWidget({
     verifyPath: (id: number) => `/my/wallet/${id}/verify`,
 });
 
@@ -108,6 +118,23 @@ function withdraw(): void {
     });
 }
 
+/**
+ * Whether asking the provider about this one is still worth doing.
+ *
+ * Everything in flight is: nothing here can know the money arrived until the provider
+ * is asked, and a member watching an unchanged balance with nothing to press is the
+ * one who pays a second time. A payment already parked for a treasurer is not — that
+ * one is waiting on a person, and another check will not move it.
+ */
+function mayCheck(payment: PaymentIntent): boolean {
+    return payment.status !== 'needs-attention';
+}
+
+/** Asks the provider what became of a top-up; the browser is never believed. */
+function checkTopUp(payment: PaymentIntent): void {
+    verify(payment.id);
+}
+
 function when(value: string | null): string {
     return value
         ? new Date(value).toLocaleDateString('en-GB', { dateStyle: 'medium' })
@@ -132,6 +159,72 @@ function when(value: string | null): string {
                         : `This wallet is ${wallet.status_label.toLowerCase()}.`
                 "
             />
+
+            <!-- Money the member has started putting in that has not landed yet.
+                 The credit comes from the provider's webhook or the poller, and a
+                 member who approves a prompt is quicker than both — so the payment is
+                 on the screen with a way to ask about it, rather than nothing at all
+                 while the balance sits still. -->
+            <AppCard
+                v-if="topUps.length > 0"
+                title="On its way in"
+                description="Money you have started putting in. It reaches your balance once the provider confirms it."
+            >
+                <ul class="space-y-3">
+                    <li
+                        v-for="payment in topUps"
+                        :key="payment.id"
+                        class="rounded-xl border px-4 py-3"
+                        :class="
+                            payment.has_stalled
+                                ? 'border-gold-300 bg-gold-50 dark:border-gold-400/30 dark:bg-gold-400/10'
+                                : 'border-border bg-muted'
+                        "
+                    >
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p
+                                    class="text-sm font-medium text-card-foreground"
+                                >
+                                    {{
+                                        payment.has_stalled
+                                            ? 'That prompt was not approved in time'
+                                            : payment.member_status_label
+                                    }}
+                                </p>
+                                <p class="text-xs text-muted-foreground">
+                                    {{
+                                        payment.has_stalled
+                                            ? (payment.status_reason ??
+                                              'Nothing was taken. Start it again below.')
+                                            : (payment.status_reason ??
+                                              payment.channel_label)
+                                    }}
+                                </p>
+                            </div>
+
+                            <MoneyText
+                                :ngwee="payment.amount_ngwee"
+                                class="shrink-0 font-medium tabular-nums"
+                            />
+                        </div>
+
+                        <AppButton
+                            v-if="mayCheck(payment)"
+                            class="mt-3"
+                            block
+                            variant="outline"
+                            @click="checkTopUp(payment)"
+                        >
+                            {{
+                                payment.has_stalled
+                                    ? 'Clear it'
+                                    : 'Check the payment'
+                            }}
+                        </AppButton>
+                    </li>
+                </ul>
+            </AppCard>
 
             <AppCard
                 title="Put money in"
