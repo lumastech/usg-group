@@ -69,6 +69,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Retries
+    |--------------------------------------------------------------------------
+    |
+    | How long after an attempt a fresh one may be sent for the same thing. A retry
+    | puts a second prompt on somebody's handset, and the further it is from what
+    | they were doing at the time, the less it looks like the payment they started
+    | and the more it looks like a request they never made.
+    |
+    | An administrator is not held to it: cleaning up a payment nobody could resolve
+    | on the day is exactly the job the window would otherwise block.
+    |
+    */
+
+    'retry_within_minutes' => (int) env('PAYMENT_RETRY_WITHIN_MINUTES', 15),
+
+    /*
+    |--------------------------------------------------------------------------
     | Collections
     |--------------------------------------------------------------------------
     |

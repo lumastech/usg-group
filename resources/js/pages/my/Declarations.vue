@@ -29,6 +29,7 @@ import {
     StatusBadge,
     WindowCountdown,
 } from '@/components/unity';
+import { usePaymentWatch } from '@/composables/usePaymentWatch';
 import { usePaymentWidget } from '@/composables/usePaymentWidget';
 import MemberLayout from '@/layouts/unity/MemberLayout.vue';
 import { formatMoney } from '@/lib/money';
@@ -147,6 +148,13 @@ const {
     openIfStarted,
     verify,
 } = usePaymentWidget();
+
+/* The same automatic checks the wallet makes: a prompt being approved on the handset
+   is asked about on the member's behalf, quietly, until it comes to rest. */
+usePaymentWatch(
+    () => (props.payment === null ? [] : [props.payment]),
+    (payment) => verify(payment.id, { quiet: true }),
+);
 
 /** Which of the two buttons is waiting on the server, so only that one spins. */
 const paying = computed<'mobile_money' | 'card' | null>(() =>

@@ -115,7 +115,7 @@ describe('usePaymentWidget', () => {
         expect(post).toHaveBeenCalledWith(
             '/my/payments/42/verify',
             {},
-            { preserveScroll: true },
+            { preserveScroll: true, preserveState: true },
         );
     });
 

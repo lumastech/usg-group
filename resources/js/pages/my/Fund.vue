@@ -31,6 +31,7 @@ import {
     TextInput,
 } from '@/components/unity';
 import type { SelectOption } from '@/components/unity';
+import { usePaymentWatch } from '@/composables/usePaymentWatch';
 import { usePaymentWidget } from '@/composables/usePaymentWidget';
 import MemberLayout from '@/layouts/unity/MemberLayout.vue';
 import { formatMoney } from '@/lib/money';
@@ -79,6 +80,13 @@ const {
     openIfStarted,
     verify,
 } = usePaymentWidget();
+
+/* The same automatic checks the wallet makes: a prompt being approved on the handset
+   is asked about on the member's behalf, quietly, until it comes to rest. */
+usePaymentWatch(
+    () => (props.payment === null ? [] : [props.payment]),
+    (payment) => verify(payment.id, { quiet: true }),
+);
 
 const payForm = useForm({ channel: 'mobile_money' });
 

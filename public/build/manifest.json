@@ -598,8 +598,8 @@
       "_dist-BavG3T2f.js"
     ]
   },
-  "_usePaymentWidget-7U1hW_lF.js": {
-    "file": "assets/usePaymentWidget-7U1hW_lF.js",
+  "_usePaymentWidget-D2EfDQPB.js": {
+    "file": "assets/usePaymentWidget-D2EfDQPB.js",
     "name": "usePaymentWidget",
     "imports": [
       "_dist-BavG3T2f.js",
@@ -652,7 +652,7 @@
     "isEntry": true
   },
   "resources/js/app.ts": {
-    "file": "assets/app-BB-ycqtB.js",
+    "file": "assets/app-CykuY_4W.js",
     "name": "app",
     "src": "resources/js/app.ts",
     "isEntry": true,
@@ -1567,7 +1567,7 @@
     ]
   },
   "resources/js/pages/my/Declarations.vue": {
-    "file": "assets/Declarations-4PfhC3RI.js",
+    "file": "assets/Declarations-CUsBn_mn.js",
     "name": "Declarations",
     "src": "resources/js/pages/my/Declarations.vue",
     "isDynamicEntry": true,
@@ -1576,7 +1576,7 @@
       "_createLucideIcon-Bhhhah2x.js",
       "_PortalSwitcher-gzlfg9Hv.js",
       "_smartphone-WDkgktiU.js",
-      "_usePaymentWidget-7U1hW_lF.js",
+      "_usePaymentWidget-D2EfDQPB.js",
       "_lock-Dj6lqWi_.js",
       "_MoneyInput-DPxsQlU5.js",
       "_FormField-DEc3OvuI.js",
@@ -1605,7 +1605,7 @@
     ]
   },
   "resources/js/pages/my/Fund.vue": {
-    "file": "assets/Fund-C5yN5gax.js",
+    "file": "assets/Fund-C6Qgb-7Z.js",
     "name": "Fund",
     "src": "resources/js/pages/my/Fund.vue",
     "isDynamicEntry": true,
@@ -1614,7 +1614,7 @@
       "_PortalSwitcher-gzlfg9Hv.js",
       "_baby-BYuC_XJb.js",
       "_smartphone-WDkgktiU.js",
-      "_usePaymentWidget-7U1hW_lF.js",
+      "_usePaymentWidget-D2EfDQPB.js",
       "_StatCard-CJmPV8rc.js",
       "_FormField-DEc3OvuI.js",
       "_Modal-CfcHJ8q5.js",
@@ -1644,7 +1644,7 @@
     ]
   },
   "resources/js/pages/my/Payments.vue": {
-    "file": "assets/Payments-pjMydjVD.js",
+    "file": "assets/Payments-Bh-8exds.js",
     "name": "Payments",
     "src": "resources/js/pages/my/Payments.vue",
     "isDynamicEntry": true,
@@ -1652,7 +1652,7 @@
       "_dist-BavG3T2f.js",
       "_PortalSwitcher-gzlfg9Hv.js",
       "_smartphone-WDkgktiU.js",
-      "_usePaymentWidget-7U1hW_lF.js",
+      "_usePaymentWidget-D2EfDQPB.js",
       "_MoneyInput-DPxsQlU5.js",
       "_FormField-DEc3OvuI.js",
       "_TextInput-NQ8IG-uW.js",
@@ -1707,7 +1707,7 @@
     ]
   },
   "resources/js/pages/my/Wallet.vue": {
-    "file": "assets/Wallet-BTcPLmkE.js",
+    "file": "assets/Wallet-zn2g-bkj.js",
     "name": "Wallet",
     "src": "resources/js/pages/my/Wallet.vue",
     "isDynamicEntry": true,
@@ -1717,7 +1717,7 @@
       "_PortalSwitcher-gzlfg9Hv.js",
       "_arrow-up-right-BUTCre25.js",
       "_smartphone-WDkgktiU.js",
-      "_usePaymentWidget-7U1hW_lF.js",
+      "_usePaymentWidget-D2EfDQPB.js",
       "_MoneyInput-DPxsQlU5.js",
       "_StatCard-CJmPV8rc.js",
       "_FormField-DEc3OvuI.js",

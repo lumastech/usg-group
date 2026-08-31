@@ -30,6 +30,7 @@ import {
     StatCard,
     TextInput,
 } from '@/components/unity';
+import { usePaymentWatch } from '@/composables/usePaymentWatch';
 import { usePaymentWidget } from '@/composables/usePaymentWidget';
 import MemberLayout from '@/layouts/unity/MemberLayout.vue';
 import type {
@@ -59,6 +60,18 @@ const {
 } = usePaymentWidget({
     verifyPath: (id: number) => `/my/wallet/${id}/verify`,
 });
+
+/*
+ * While a prompt is out, the screen asks the provider on the member's behalf.
+ *
+ * The credit reaches the wallet by webhook or by the poller, both of which are slower
+ * than a member watching the screen. The checks are quiet ones: the server says nothing
+ * until something has actually happened.
+ */
+usePaymentWatch(
+    () => props.topUps,
+    (payment) => verify(payment.id, { quiet: true }),
+);
 
 const topUp = useForm({
     amount_ngwee: null as number | null,
@@ -396,6 +409,18 @@ function when(value: string | null): string {
             </AppCard>
 
             <AppCard title="Everything that has moved" flush>
+                <template #actions>
+                    <!-- Every payment, including the ones that never reached the
+                         wallet: a member checking why money is missing needs to see
+                         the attempt that failed, not only the ones that worked. -->
+                    <Link
+                        href="/my/payments"
+                        class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
+                    >
+                        All my payments
+                    </Link>
+                </template>
+
                 <EmptyState
                     v-if="statement.length === 0"
                     title="Nothing yet"

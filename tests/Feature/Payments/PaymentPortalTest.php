@@ -174,6 +174,89 @@ it('never retries a payment the provider says succeeded', function (): void {
     $this->post(route('app.payments.retry', $intent))->assertForbidden();
 });
 
+/**
+ * A retry is a live prompt on somebody's handset. Long after the attempt it no longer
+ * looks like the payment they were in the middle of, which is exactly the shape of
+ * request a member should not be approving.
+ */
+it('retries an attempt the member could still place', function (): void {
+    actingAsPaymentOffice(MemberRole::Treasurer);
+
+    $intent = PaymentIntent::factory()->for($this->cycle)->for($this->member)->create([
+        'status' => PaymentStatus::Failed,
+        'initiated_at' => Carbon::now()->subMinutes(5),
+    ]);
+
+    $this->post(route('app.payments.retry', $intent))->assertRedirect();
+
+    expect($this->member->paymentIntents()->count())->toBe(2);
+});
+
+it('will not put a second prompt out for an attempt the member has moved on from', function (): void {
+    actingAsPaymentOffice(MemberRole::Treasurer);
+
+    $intent = PaymentIntent::factory()->for($this->cycle)->for($this->member)->create([
+        'status' => PaymentStatus::Failed,
+        'initiated_at' => Carbon::now()->subHour(),
+    ]);
+
+    $this->post(route('app.payments.retry', $intent))->assertForbidden();
+
+    expect($this->member->paymentIntents()->count())->toBe(1);
+});
+
+it('holds an administrator to no such window', function (): void {
+    actingAsPaymentOffice(MemberRole::Admin);
+
+    $intent = PaymentIntent::factory()->for($this->cycle)->for($this->member)->create([
+        'status' => PaymentStatus::Failed,
+        'initiated_at' => Carbon::now()->subDay(),
+    ]);
+
+    $this->post(route('app.payments.retry', $intent))->assertRedirect();
+
+    expect($this->member->paymentIntents()->count())->toBe(2);
+});
+
+/**
+ * The screen checks on the member's behalf while a prompt is out. Six "still waiting"
+ * messages a minute is not news, and it would bury the one message that matters.
+ */
+it('says nothing when an automatic check finds the prompt still unanswered', function (): void {
+    actingAsThatMember();
+
+    $intent = PaymentIntent::factory()->for($this->cycle)->for($this->member)->create([
+        'status' => PaymentStatus::AwaitingAuthorization,
+        'initiated_at' => Carbon::now()->subSeconds(30),
+    ]);
+
+    $this->gateway->willAnswer(PaymentStatus::AwaitingAuthorization);
+
+    $this->post(route('my.payments.verify', $intent), ['quiet' => true])
+        ->assertRedirect()
+        ->assertSessionMissing('success')
+        ->assertSessionMissing('error');
+});
+
+it('speaks up the moment an automatic check finds the money', function (): void {
+    actingAsThatMember();
+
+    $intent = PaymentIntent::factory()->for($this->cycle)->for($this->member)->create([
+        'status' => PaymentStatus::AwaitingAuthorization,
+        'purpose' => PaymentPurpose::JoiningFee,
+        'cycle_month_id' => $this->january->id,
+        'initiated_at' => Carbon::now()->subSeconds(30),
+    ]);
+
+    $this->gateway->willAnswer(PaymentStatus::Successful);
+
+    $this->post(route('my.payments.verify', $intent), ['quiet' => true])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect($intent->refresh()->status)->toBe(PaymentStatus::Posted);
+});
+
 it('shows the reconciliation screen and runs it on request', function (): void {
     actingAsPaymentOffice(MemberRole::Treasurer);
 

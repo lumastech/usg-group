@@ -100,8 +100,20 @@ export function usePaymentWidget(options: PaymentWidgetOptions = {}) {
         });
     }
 
-    function verify(id: number): void {
-        router.post(verifyPath(id), {}, { preserveScroll: true });
+    /**
+     * Asks the provider what became of a payment.
+     *
+     * `quiet` is for the automatic checks the screen makes while a prompt is out: the
+     * server stays silent about a payment still in flight, so a member is not told six
+     * times in a minute that they are being waited on. Anything that actually happened
+     * — the money landing, the prompt dying — still speaks.
+     */
+    function verify(id: number, options: { quiet?: boolean } = {}): void {
+        router.post(
+            verifyPath(id),
+            options.quiet === true ? { quiet: true } : {},
+            { preserveScroll: true, preserveState: true },
+        );
     }
 
     /**

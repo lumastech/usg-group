@@ -25,6 +25,7 @@ import {
     StatusBadge,
     TextInput,
 } from '@/components/unity';
+import { usePaymentWatch } from '@/composables/usePaymentWatch';
 import { usePaymentWidget } from '@/composables/usePaymentWidget';
 import MemberLayout from '@/layouts/unity/MemberLayout.vue';
 import type { PaymentIntent, PaymentWidgetConfig } from '@/types/payments';
@@ -48,6 +49,13 @@ const props = defineProps<{
 /* Card details are only ever typed into the provider's own page; the same handover
    the declaration screen uses, so the two cannot drift apart. */
 const { error: widgetError, openIfStarted, verify } = usePaymentWidget();
+
+/* A prompt on the handset is asked about on the member's behalf while they approve
+   it, so the row moves to "Recorded" without anybody pressing anything. */
+usePaymentWatch(
+    () => props.payments,
+    (payment) => verify(payment.id, { quiet: true }),
+);
 
 const form = useForm({
     purpose: 'savings_contribution',

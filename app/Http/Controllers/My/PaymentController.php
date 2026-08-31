@@ -137,6 +137,12 @@ class PaymentController extends Controller
     {
         abort_unless($intent->member?->user_id === $request->user()->id, 403);
 
+        /* One of the screen's own checks while a prompt is out, rather than the member
+           pressing the button. It says nothing about a payment still in flight: being
+           told six times in a minute that we are still waiting is not news, and it
+           would bury the message that does matter. */
+        $quiet = $request->boolean('quiet');
+
         try {
             $this->intents->refresh($intent);
         } catch (PaymentGatewayException $exception) {
@@ -150,7 +156,9 @@ class PaymentController extends Controller
                 return back()->with('info', 'That payment was not completed, so nothing was taken. You can try again.');
             }
 
-            return back()->with('error', $exception->reason());
+            /* The provider being unreachable for a moment is not the member's problem
+               to hear about: the next check is ten seconds away. */
+            return $quiet ? back() : back()->with('error', $exception->reason());
         }
 
         $this->poster->post($intent->refresh());
@@ -166,7 +174,13 @@ class PaymentController extends Controller
             );
         }
 
-        return back()->with('success', $intent->refresh()->status->memberLabel().'.');
+        $intent->refresh();
+
+        if ($quiet && $intent->status->isInFlight()) {
+            return back();
+        }
+
+        return back()->with('success', $intent->status->memberLabel().'.');
     }
 
     /** A payment the member will finish inside the provider's widget. */
