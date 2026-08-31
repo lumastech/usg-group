@@ -103,6 +103,40 @@ kept apart on purpose.
   at 23:50 on the 7th and processed on the 8th is allocated on the 7th; anything else
   charges the member a late penalty for the depth of our queue.
 
+### Wallets sit between the provider and the ledgers
+
+Every member has one wallet per cycle, and the group has one of its own. A wallet holds
+**only money that is not yet committed to a ledger** — money topped up and not yet paid
+to the group, money the group has paid the member and they have not yet withdrawn, and
+money a failed withdrawal put back. The moment money becomes savings it leaves the
+wallet: savings are locked until share-out and a wallet balance is not, and if the two
+were the same balance the group would be running a deposit business it never agreed to
+run. See `docs/WALLET-PLAN.md` and `.ai/rules/wallets.md`.
+
+The money map, with the wallet in it:
+
+| Movement | How it happens |
+| --- | --- |
+| Member funds their wallet | **Top-up** — the provider, or cash counted by a treasurer. No domain rule is consulted; there is none under which the group will not take money into a member's own wallet |
+| Savings, declaration, joining fee, social fund, loan repayment | **Internal transfer**, member wallet → group wallet, through `WalletPayments`. Every rule that used to gate the collection is enforced here, where a refusal costs nothing |
+| Loan disbursement, grant, apportionment, payout, share-out | **Internal transfer**, group wallet → member wallet, through `WalletDisbursements`. Two-signature rules unchanged |
+| Member takes money out | **Withdrawal** — a provider transfer to a verified destination, or cash from a treasurer behind two signatures |
+
+Two provider rails remain and nothing else: money into a wallet, and money out of one.
+
+- `wallet_entries` is an immutable ledger like every other. The amount is **signed**;
+  a balance is a `SUM` and nothing caches it.
+- A transfer writes exactly **two** entries in one transaction and never one without the
+  other. That pairing is the double-entry guarantee.
+- `SUM(member wallet balances)` is a **liability** — money the group owes on demand. It
+  never appears in the savings pool or the social fund balance.
+- `unity:reconcile-wallets` checks daily that the whole float is backed by real money and
+  **exits non-zero** when it is not. It is the only check that catches a wallet credited
+  with nothing behind it.
+- The committee's policy answers — who bears the withdrawal fee, the minimum, whether
+  cash out needs a second signature, what happens at rollover — live in
+  `config/wallets.php`, not in code.
+
 ---
 
 ## 3. Cycles

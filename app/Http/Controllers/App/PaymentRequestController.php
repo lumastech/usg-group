@@ -74,6 +74,17 @@ class PaymentRequestController extends Controller
                     $request->phone(),
                     $request->operator(),
                 ),
+                /* A treasurer at the table asking a member to fund their own wallet.
+                   Nothing is decided by this: the money is the member's until they
+                   pay it to the group, and no rule can refuse it. */
+                PaymentPurpose::WalletTopUp => $this->initiator->topUp(
+                    $member,
+                    $member->cycle,
+                    $amount,
+                    $actor,
+                    $request->phone(),
+                    $request->operator(),
+                ),
                 default => throw ValidationException::withMessages([
                     'purpose' => 'That is not something a member can be asked to pay.',
                 ]),

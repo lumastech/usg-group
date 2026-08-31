@@ -26,6 +26,17 @@ enum PaymentPurpose: string
     case LoanRepayment = 'loan_repayment';
     case SocialFundContribution = 'social_fund_contribution';
 
+    /**
+     * Money into a member's own wallet, for nothing in particular yet.
+     *
+     * This is the one collection no domain rule may refuse: there is no rule under
+     * which the group will not take money into a member's own wallet. Every rule that
+     * used to be checked before asking for money now sits on the wallet-to-wallet
+     * transfer instead, where a refusal costs nothing because nothing has moved.
+     * See docs/WALLET-PLAN.md §5.
+     */
+    case WalletTopUp = 'wallet_top_up';
+
     case LoanDisbursement = 'loan_disbursement';
     case Payout = 'payout';
     case ShareOut = 'share_out';
@@ -33,11 +44,15 @@ enum PaymentPurpose: string
     case UnityBabyGrant = 'unity_baby_grant';
     case DiasporaApportionment = 'diaspora_apportionment';
 
+    /** Money out of a member's own wallet, to where they said to send it. */
+    case WalletWithdrawal = 'wallet_withdrawal';
+
     public function direction(): PaymentDirection
     {
         return match ($this) {
             self::SavingsContribution, self::DeclarationSettlement, self::JoiningFee,
-            self::LoanRepayment, self::SocialFundContribution => PaymentDirection::Collection,
+            self::LoanRepayment, self::SocialFundContribution,
+            self::WalletTopUp => PaymentDirection::Collection,
             default => PaymentDirection::Transfer,
         };
     }
@@ -73,12 +88,14 @@ enum PaymentPurpose: string
             self::JoiningFee => 'joi',
             self::LoanRepayment => 'rep',
             self::SocialFundContribution => 'fnd',
+            self::WalletTopUp => 'top',
             self::LoanDisbursement => 'dis',
             self::Payout => 'pay',
             self::ShareOut => 'sho',
             self::FuneralGrant => 'fun',
             self::UnityBabyGrant => 'bab',
             self::DiasporaApportionment => 'dia',
+            self::WalletWithdrawal => 'wdr',
         };
     }
 
@@ -90,12 +107,14 @@ enum PaymentPurpose: string
             self::JoiningFee => 'Joining fee',
             self::LoanRepayment => 'Loan repayment',
             self::SocialFundContribution => 'Social fund contribution',
+            self::WalletTopUp => 'Wallet top-up',
             self::LoanDisbursement => 'Loan disbursement',
             self::Payout => 'Payout',
             self::ShareOut => 'Share-out',
             self::FuneralGrant => 'Funeral grant',
             self::UnityBabyGrant => 'Unity baby grant',
             self::DiasporaApportionment => 'Diaspora apportionment',
+            self::WalletWithdrawal => 'Wallet withdrawal',
         };
     }
 

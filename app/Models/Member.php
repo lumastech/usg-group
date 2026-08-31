@@ -128,6 +128,19 @@ class Member extends Model
             ->whereNull('disabled_at');
     }
 
+    /**
+     * Where the member's uncommitted money is standing.
+     *
+     * One per cycle, opened with the member. Not a savings account: savings are locked
+     * until share-out and this is not — see docs/WALLET-PLAN.md §1.
+     *
+     * @return HasOne<Wallet, $this>
+     */
+    public function wallet(): HasOne
+    {
+        return $this->hasOne(Wallet::class);
+    }
+
     /** @return HasMany<PaymentIntent, $this> */
     public function paymentIntents(): HasMany
     {

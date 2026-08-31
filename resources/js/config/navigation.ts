@@ -142,6 +142,12 @@ export const adminNavigation: NavSection[] = [
                 permissions: ['payments.view'],
             },
             {
+                title: 'Wallets',
+                href: '/app/wallets',
+                icon: Wallet,
+                permissions: ['payments.view'],
+            },
+            {
                 title: 'Reconciliation',
                 href: '/app/payments/reconciliation',
                 icon: ScanLine,
@@ -225,7 +231,8 @@ export const memberNavigation: NavItem[] = [
         icon: ClipboardList,
         permissions: ['declarations.submit-own'],
     },
-    { title: 'Savings', href: '/my/savings', icon: Wallet },
+    { title: 'Wallet', href: '/my/wallet', icon: Wallet },
+    { title: 'Savings', href: '/my/savings', icon: PiggyBank },
     { title: 'Loans', href: '/my/loan', icon: HandCoins },
     { title: 'Fund', href: '/my/fund', icon: HeartHandshake },
 ];

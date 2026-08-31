@@ -130,6 +130,22 @@ type Widgets = {
     fund: boolean;
     compliance: boolean;
     shareout: boolean;
+    wallets: boolean;
+};
+
+/**
+ * What the group owes its members on demand, and whether last night's check agreed.
+ *
+ * The variance comes from the recorded reconciliation run rather than being computed
+ * here — that check asks the provider for its balance, and a dashboard load is not the
+ * place for a network call.
+ */
+type WalletFloat = {
+    liability_ngwee: number;
+    group_ngwee: number;
+    checked_on: string | null;
+    variance_ngwee: number | null;
+    balances: boolean | null;
 };
 
 interface MissingMember {
@@ -150,6 +166,7 @@ const props = defineProps<{
     widgets: Widgets;
     membersMissingSavings?: MissingMember[];
     monthWindow?: MonthWindow | null;
+    walletFloat?: WalletFloat | null;
 }>();
 
 const formatDate = (value: string) =>
@@ -414,7 +431,32 @@ const description = computed(() => {
                     :icon="Wallet"
                     hint="Savings and interest not currently out on loan"
                 />
-                <Link v-if="widgets.fund && overview.fund" href="/app/fund" class="block">
+                <Link
+                    v-if="widgets.wallets && walletFloat"
+                    href="/app/wallets"
+                    class="block"
+                >
+                    <StatCard
+                        label="Owed to members"
+                        :ngwee="walletFloat.liability_ngwee"
+                        :icon="Wallet"
+                        :hint="
+                            walletFloat.balances === false
+                                ? 'The float did not agree with the money the group holds'
+                                : walletFloat.checked_on
+                                  ? 'Backed by money the group holds, checked overnight'
+                                  : 'Wallet balances — not yet checked against the provider'
+                        "
+                        :accent="
+                            walletFloat.balances === false ? 'gold' : 'none'
+                        "
+                    />
+                </Link>
+                <Link
+                    v-if="widgets.fund && overview.fund"
+                    href="/app/fund"
+                    class="block"
+                >
                     <StatCard
                         label="Social fund"
                         :ngwee="overview.fund.balance_ngwee"
@@ -453,21 +495,41 @@ const description = computed(() => {
                     <div class="space-y-3">
                         <div class="grid gap-3 sm:grid-cols-3">
                             <div>
-                                <p class="text-xs uppercase text-muted-foreground">Members</p>
+                                <p
+                                    class="text-xs text-muted-foreground uppercase"
+                                >
+                                    Members
+                                </p>
                                 <p class="tabular text-xl font-semibold">
                                     {{ overview.risk.members }}
                                 </p>
                             </div>
                             <div>
-                                <p class="text-xs uppercase text-muted-foreground">Total shortfall</p>
+                                <p
+                                    class="text-xs text-muted-foreground uppercase"
+                                >
+                                    Total shortfall
+                                </p>
                                 <p class="tabular text-xl font-semibold">
-                                    {{ formatMoney(overview.risk.shortfall_ngwee) }}
+                                    {{
+                                        formatMoney(
+                                            overview.risk.shortfall_ngwee,
+                                        )
+                                    }}
                                 </p>
                             </div>
                             <div>
-                                <p class="text-xs uppercase text-muted-foreground">Minimum first month</p>
+                                <p
+                                    class="text-xs text-muted-foreground uppercase"
+                                >
+                                    Minimum first month
+                                </p>
                                 <p class="tabular text-xl font-semibold">
-                                    {{ formatMoney(overview.risk.minimum_monthly_ngwee) }}
+                                    {{
+                                        formatMoney(
+                                            overview.risk.minimum_monthly_ngwee,
+                                        )
+                                    }}
                                 </p>
                             </div>
                         </div>
@@ -478,7 +540,9 @@ const description = computed(() => {
                                 :key="row.member_id"
                                 class="flex items-center justify-between gap-3 rounded px-2 py-1 text-sm odd:bg-muted/40"
                             >
-                                <span class="truncate">{{ row.full_name }}</span>
+                                <span class="truncate">{{
+                                    row.full_name
+                                }}</span>
                                 <span class="tabular shrink-0 font-medium">
                                     {{ formatMoney(row.shortfall_ngwee) }}
                                 </span>
@@ -486,7 +550,8 @@ const description = computed(() => {
                         </ul>
 
                         <p v-else class="text-sm text-muted-foreground">
-                            Every member's savings and interest cover what they owe.
+                            Every member's savings and interest cover what they
+                            owe.
                         </p>
 
                         <Link
@@ -510,12 +575,17 @@ const description = computed(() => {
                                 {{ overview.target.progress_percent }}%
                             </p>
                             <p class="text-sm text-muted-foreground">
-                                {{ formatMoney(overview.target.borrowed_ngwee) }} of
+                                {{
+                                    formatMoney(overview.target.borrowed_ngwee)
+                                }}
+                                of
                                 {{ formatMoney(overview.target.target_ngwee) }}
                             </p>
                         </div>
 
-                        <div class="h-2 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                            class="h-2 w-full overflow-hidden rounded-full bg-muted"
+                        >
                             <div
                                 class="h-full rounded-full bg-brand-500"
                                 :style="{
@@ -526,7 +596,8 @@ const description = computed(() => {
 
                         <p class="text-sm text-muted-foreground">
                             {{ overview.target.members_at_target }} at target ·
-                            {{ overview.target.members_under_target }} still short
+                            {{ overview.target.members_under_target }} still
+                            short
                         </p>
 
                         <Link
@@ -548,7 +619,7 @@ const description = computed(() => {
             >
                 <dl class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
-                        <dt class="text-xs uppercase text-muted-foreground">
+                        <dt class="text-xs text-muted-foreground uppercase">
                             Unpaid contributions
                         </dt>
                         <dd class="tabular text-xl font-semibold">
@@ -556,7 +627,7 @@ const description = computed(() => {
                         </dd>
                     </div>
                     <div>
-                        <dt class="text-xs uppercase text-muted-foreground">
+                        <dt class="text-xs text-muted-foreground uppercase">
                             Unpaid joining fees
                         </dt>
                         <dd class="tabular text-xl font-semibold">
@@ -564,18 +635,21 @@ const description = computed(() => {
                         </dd>
                     </div>
                     <div>
-                        <dt class="text-xs uppercase text-muted-foreground">
+                        <dt class="text-xs text-muted-foreground uppercase">
                             Late declarations
                         </dt>
                         <dd class="tabular text-xl font-semibold">
                             {{ overview.compliance.late_declarations }}
                         </dd>
                         <p class="text-xs text-muted-foreground">
-                            {{ overview.compliance.late_declarations_this_month }} this month
+                            {{
+                                overview.compliance.late_declarations_this_month
+                            }}
+                            this month
                         </p>
                     </div>
                     <div>
-                        <dt class="text-xs uppercase text-muted-foreground">
+                        <dt class="text-xs text-muted-foreground uppercase">
                             Missed installments
                         </dt>
                         <dd class="tabular text-xl font-semibold">

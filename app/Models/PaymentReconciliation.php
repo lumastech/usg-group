@@ -30,13 +30,17 @@ use Illuminate\Support\Carbon;
  * @property Money|null $provider_balance_ngwee
  * @property array<int, array<string, mixed>>|null $unmatched
  * @property int $unmatched_count
+ * @property Money|null $wallet_variance_ngwee
+ * @property Money|null $group_wallet_variance_ngwee
+ * @property array<string, mixed>|null $wallet_invariants
  * @property int|null $run_by_member_id
  * @property Carbon $ran_at
  */
 #[Fillable([
     'cycle_id', 'for_date', 'collections_count', 'collections_ngwee', 'transfers_count',
     'transfers_ngwee', 'fees_ngwee', 'provider_balance_ngwee', 'unmatched',
-    'unmatched_count', 'run_by_member_id', 'ran_at',
+    'unmatched_count', 'wallet_variance_ngwee', 'group_wallet_variance_ngwee',
+    'wallet_invariants', 'run_by_member_id', 'ran_at',
 ])]
 class PaymentReconciliation extends Model
 {
@@ -55,6 +59,23 @@ class PaymentReconciliation extends Model
         return $this->unmatched_count === 0;
     }
 
+    /**
+     * Whether the wallet float is fully backed by money the group actually holds.
+     *
+     * Invariant 1. A mismatch is an alarm: it is the only check standing between the
+     * group and a float that quietly does not exist.
+     */
+    public function walletsBalance(): bool
+    {
+        if ($this->wallet_variance_ngwee === null) {
+            return true;
+        }
+
+        $tolerance = (int) config('wallets.reconciliation.tolerance_ngwee', 0);
+
+        return abs($this->wallet_variance_ngwee->getMinorAmount()->toInt()) <= $tolerance;
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {
@@ -66,6 +87,9 @@ class PaymentReconciliation extends Model
             'fees_ngwee' => MoneyCast::class,
             'provider_balance_ngwee' => MoneyCast::class,
             'unmatched' => 'array',
+            'wallet_variance_ngwee' => MoneyCast::class,
+            'group_wallet_variance_ngwee' => MoneyCast::class,
+            'wallet_invariants' => 'array',
         ];
     }
 }

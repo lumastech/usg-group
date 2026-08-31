@@ -272,17 +272,19 @@ export const PaymentPurpose = {
     JoiningFee: 'joining_fee',
     LoanRepayment: 'loan_repayment',
     SocialFundContribution: 'social_fund_contribution',
+    WalletTopUp: 'wallet_top_up',
     LoanDisbursement: 'loan_disbursement',
     Payout: 'payout',
     ShareOut: 'share_out',
     FuneralGrant: 'funeral_grant',
     UnityBabyGrant: 'unity_baby_grant',
     DiasporaApportionment: 'diaspora_apportionment',
+    WalletWithdrawal: 'wallet_withdrawal',
 } as const;
 
 export type PaymentPurpose = (typeof PaymentPurpose)[keyof typeof PaymentPurpose];
 
-export const paymentPurposeValues: readonly PaymentPurpose[] = ['savings_contribution', 'declaration_settlement', 'joining_fee', 'loan_repayment', 'social_fund_contribution', 'loan_disbursement', 'payout', 'share_out', 'funeral_grant', 'unity_baby_grant', 'diaspora_apportionment'];
+export const paymentPurposeValues: readonly PaymentPurpose[] = ['savings_contribution', 'declaration_settlement', 'joining_fee', 'loan_repayment', 'social_fund_contribution', 'wallet_top_up', 'loan_disbursement', 'payout', 'share_out', 'funeral_grant', 'unity_baby_grant', 'diaspora_apportionment', 'wallet_withdrawal'];
 
 export const PaymentStatus = {
     Draft: 'draft',
@@ -438,11 +440,64 @@ export const TransactionSource = {
     Import: 'import',
     System: 'system',
     Gateway: 'gateway',
+    Cash: 'cash',
 } as const;
 
 export type TransactionSource = (typeof TransactionSource)[keyof typeof TransactionSource];
 
-export const transactionSourceValues: readonly TransactionSource[] = ['manual', 'trading', 'import', 'system', 'gateway'];
+export const transactionSourceValues: readonly TransactionSource[] = ['manual', 'trading', 'import', 'system', 'gateway', 'cash'];
+
+export const WalletEntryType = {
+    TopUp: 'top_up',
+    Payment: 'payment',
+    Receipt: 'receipt',
+    Withdrawal: 'withdrawal',
+    Fee: 'fee',
+    Reversal: 'reversal',
+    CarryForward: 'carry_forward',
+    Adjustment: 'adjustment',
+} as const;
+
+export type WalletEntryType = (typeof WalletEntryType)[keyof typeof WalletEntryType];
+
+export const walletEntryTypeValues: readonly WalletEntryType[] = ['top_up', 'payment', 'receipt', 'withdrawal', 'fee', 'reversal', 'carry_forward', 'adjustment'];
+
+export const WalletKind = {
+    Member: 'member',
+    Group: 'group',
+} as const;
+
+export type WalletKind = (typeof WalletKind)[keyof typeof WalletKind];
+
+export const walletKindValues: readonly WalletKind[] = ['member', 'group'];
+
+export const WalletStatus = {
+    Open: 'open',
+    Frozen: 'frozen',
+    Closed: 'closed',
+} as const;
+
+export type WalletStatus = (typeof WalletStatus)[keyof typeof WalletStatus];
+
+export const walletStatusValues: readonly WalletStatus[] = ['open', 'frozen', 'closed'];
+
+export const WalletTransferPurpose = {
+    SavingsContribution: 'savings_contribution',
+    DeclarationSettlement: 'declaration_settlement',
+    JoiningFee: 'joining_fee',
+    SocialFundContribution: 'social_fund_contribution',
+    LoanRepayment: 'loan_repayment',
+    LoanDisbursement: 'loan_disbursement',
+    Payout: 'payout',
+    ShareOut: 'share_out',
+    FuneralGrant: 'funeral_grant',
+    UnityBabyGrant: 'unity_baby_grant',
+    DiasporaApportionment: 'diaspora_apportionment',
+} as const;
+
+export type WalletTransferPurpose = (typeof WalletTransferPurpose)[keyof typeof WalletTransferPurpose];
+
+export const walletTransferPurposeValues: readonly WalletTransferPurpose[] = ['savings_contribution', 'declaration_settlement', 'joining_fee', 'social_fund_contribution', 'loan_repayment', 'loan_disbursement', 'payout', 'share_out', 'funeral_grant', 'unity_baby_grant', 'diaspora_apportionment'];
 
 export const WeekendTradingPolicy = {
     NextMonday: 'next_monday',

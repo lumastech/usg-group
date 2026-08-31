@@ -11,6 +11,7 @@ use App\Http\Controllers\My\SavingsController;
 use App\Http\Controllers\My\SettingsController;
 use App\Http\Controllers\My\SocialFundController;
 use App\Http\Controllers\My\SocialFundPaymentController;
+use App\Http\Controllers\My\WalletController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -75,6 +76,16 @@ Route::middleware(['auth', 'verified'])->prefix('my')->name('my.')->group(functi
     Route::get('payments', [PaymentController::class, 'index'])->name('payments');
     Route::post('payments', [PaymentController::class, 'store'])->name('payments.store');
     Route::post('payments/{intent}/verify', [PaymentController::class, 'verify'])->name('payments.verify');
+
+    /*
+     * The member's own wallet. Two rails and nothing else: a top-up nobody may refuse,
+     * and a withdrawal to a destination already verified. Everything the member pays
+     * the group happens between wallets and never reaches the provider.
+     */
+    Route::get('wallet', [WalletController::class, 'index'])->name('wallet');
+    Route::post('wallet/top-up', [WalletController::class, 'topUp'])->name('wallet.top-up');
+    Route::post('wallet/withdraw', [WalletController::class, 'withdraw'])->name('wallet.withdraw');
+    Route::post('wallet/{intent}/verify', [WalletController::class, 'verify'])->name('wallet.verify');
 
     /*
      * Where the member's money is sent. Guarded by the same policy as their contact

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Members;
 
+use App\Domain\Wallets\WalletRegistry;
 use App\Enums\MemberStatus;
 use App\Enums\NextOfKinRelationship;
 use App\Exceptions\JoiningFeeBelowMinimumException;
@@ -23,6 +24,10 @@ use Illuminate\Support\Facades\DB;
 class MembershipRegistrar
 {
     public const LATE_REGISTRATION_MONTH = 3;
+
+    public function __construct(
+        protected WalletRegistry $wallets,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $attributes  Member columns, optionally with a
@@ -65,6 +70,10 @@ class MembershipRegistrar
             ]);
 
             $this->syncNextOfKin($member, $nextOfKin);
+
+            /* Opened with the member, at zero, so nothing downstream has to wonder
+               whether a member has a wallet before it can pay them. */
+            $this->wallets->forMember($member, $cycle);
 
             return $member;
         });

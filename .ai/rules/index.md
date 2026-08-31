@@ -31,4 +31,5 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Domain/SocialFund/** | .ai/rules/social-fund.md |
 | app/Domain/Trading/** | .ai/rules/trading.md |
 | resources/js/components/unity/** | .ai/rules/unity.md |
+| app/Domain/Wallets/** | .ai/rules/wallets.md |
 | app/Http/Controllers/Webhooks/** | .ai/rules/webhooks.md |

@@ -85,6 +85,12 @@ class Cycle extends Model
         return $this->hasMany(CycleMonth::class)->orderBy('sequence');
     }
 
+    /** @return HasMany<Wallet, $this> */
+    public function wallets(): HasMany
+    {
+        return $this->hasMany(Wallet::class);
+    }
+
     /** @return HasMany<Member, $this> */
     public function members(): HasMany
     {

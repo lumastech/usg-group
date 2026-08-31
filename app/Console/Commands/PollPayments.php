@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Domain\Payments\PaymentIntentService;
 use App\Domain\Payments\PaymentPoster;
+use App\Domain\Wallets\WithdrawalService;
 use App\Enums\PaymentStatus;
 use App\Exceptions\PaymentGatewayException;
 use App\Models\PaymentIntent;
@@ -32,14 +33,25 @@ class PollPayments extends Command
 
     protected $description = 'Ask the payment provider about payments still in flight, and post any that have settled';
 
-    public function handle(PaymentIntentService $intents, PaymentPoster $poster): int
-    {
+    public function handle(
+        PaymentIntentService $intents,
+        PaymentPoster $poster,
+        WithdrawalService $withdrawals,
+    ): int {
         $asked = $this->pollInFlight($intents);
         $posted = $this->postSettled($poster);
         $expired = $this->expireStale($intents);
 
+        /*
+         * A member owed their own money back must not depend on which channel brought
+         * the news. Swept here, idempotently, whether the refusal arrived by webhook,
+         * by the poll above, or by the browser coming back from the widget.
+         */
+        $refunded = $withdrawals->reverseFailed();
+
         $this->components->info(
-            "Asked about {$asked} payment(s), posted {$posted}, gave up on {$expired}."
+            "Asked about {$asked} payment(s), posted {$posted}, gave up on {$expired}, "
+                ."put back {$refunded} withdrawal(s)."
         );
 
         return self::SUCCESS;

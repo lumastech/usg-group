@@ -25,7 +25,10 @@ const INITIALISE_TIMEOUT_MS = 20_000;
 /** The ids the provider's SDK gives the nodes it appends to the body. */
 const WIDGET_NODE_IDS = ['lenco-pay-iframe', 'lenco-pay-bg'];
 
-/** The SDK's message that its page is up and the form is on screen. */
+/** The SDK's message that its page has run and is ready to be given the payment. */
+const LOADED_MESSAGE = 'lenco:app-loaded';
+
+/** The SDK's message that its page accepted the payment and the form is on screen. */
 const INITIALISED_MESSAGE = 'lenco:app-initialized';
 
 /**
@@ -41,8 +44,22 @@ const INITIALISED_MESSAGE = 'lenco:app-initialized';
  * call, which asks the provider. A member closing the page without paying is not a
  * failure to hide either: verifying is what releases the draft so they can try again.
  */
-export function usePaymentWidget() {
+/**
+ * Where the verify step posts to.
+ *
+ * Every screen that hands a member to the widget has to be able to ask the provider
+ * what happened afterwards, and they do not all live under the same route. The default
+ * is the payments screen the widget was first built for.
+ */
+export type PaymentWidgetOptions = {
+    verifyPath?: (id: number) => string;
+};
+
+export function usePaymentWidget(options: PaymentWidgetOptions = {}) {
     const page = usePage();
+
+    const verifyPath =
+        options.verifyPath ?? ((id: number) => `/my/payments/${id}/verify`);
 
     /**
      * Why the provider's page did not come up, for the screen to show.
@@ -84,7 +101,7 @@ export function usePaymentWidget() {
     }
 
     function verify(id: number): void {
-        router.post(`/my/payments/${id}/verify`, {}, { preserveScroll: true });
+        router.post(verifyPath(id), {}, { preserveScroll: true });
     }
 
     /**
@@ -128,9 +145,15 @@ export function usePaymentWidget() {
     /**
      * Watches for the provider's page reporting itself up, and gives up if it does not.
      *
-     * Only messages from the provider's own origin are read, and only to learn that the
-     * form is on screen — nothing the iframe says is ever treated as proof a payment
+     * Only messages from the provider's own origin are read, and only to learn how far
+     * their page got — nothing the iframe says is ever treated as proof a payment
      * happened.
+     *
+     * The two silences mean different things and are worth telling apart. No
+     * `app-loaded` at all is their page never running: the member can only wait and try
+     * later. `app-loaded` with no `app-initialized` after it is their page running and
+     * refusing this payment — a key, a domain or an account the provider will not take
+     * it from — which is ours to go and fix, not something retrying will cure.
      */
     function watchForInitialisation(
         config: PaymentWidgetConfig,
@@ -138,14 +161,25 @@ export function usePaymentWidget() {
     ): void {
         const origin = new URL(config.script).origin;
 
+        let loaded = false;
+
         const timer = window.setTimeout(() => {
             window.removeEventListener('message', onMessage);
+
+            console.error(
+                `[payments] the provider's page did not start payment ${payment.reference}`,
+                { origin, loaded, initialised: false },
+            );
 
             abandon(
                 config,
                 payment,
-                'The card payment page did not load. Nothing has been taken — approve a ' +
-                    'prompt on your phone instead, or try the card again in a moment.',
+                loaded
+                    ? 'The payment provider would not start this card payment. Nothing has ' +
+                          'been taken — approve a prompt on your phone instead, and tell a ' +
+                          'treasurer the card page is refusing payments.'
+                    : 'The card payment page did not load. Nothing has been taken — approve ' +
+                          'a prompt on your phone instead, or try the card again in a moment.',
             );
         }, INITIALISE_TIMEOUT_MS);
 
@@ -155,6 +189,10 @@ export function usePaymentWidget() {
             }
 
             const type = (event.data as { type?: string } | null)?.type;
+
+            if (type === LOADED_MESSAGE) {
+                loaded = true;
+            }
 
             if (type === INITIALISED_MESSAGE) {
                 window.clearTimeout(timer);

@@ -7,8 +7,12 @@ use App\Domain\Declarations\DeclarationService;
 use App\Domain\Declarations\DeclarationWindow;
 use App\Domain\Reporting\CycleOverview;
 use App\Domain\Trading\TradingSessionService;
+use App\Domain\Wallets\WalletReconciler;
 use App\Http\Controllers\Controller;
+use App\Models\Cycle;
 use App\Models\CycleMonth;
+use App\Models\PaymentReconciliation;
+use App\Support\Kwacha;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -32,6 +36,7 @@ class DashboardController extends Controller
         protected DeclarationWindow $window,
         protected DeclarationService $declarations,
         protected TradingSessionService $sessions,
+        protected WalletReconciler $wallets,
     ) {}
 
     public function __invoke(Request $request, CurrentCycle $currentCycle, CycleOverview $overview): Response
@@ -45,6 +50,7 @@ class DashboardController extends Controller
                 'membersMissingSavings' => [],
                 'monthWindow' => null,
                 'widgets' => $widgets,
+                'walletFloat' => null,
             ]);
         }
 
@@ -59,6 +65,7 @@ class DashboardController extends Controller
             /* Where the month is and what it is still waiting for: the two questions
                the committee opens the dashboard to answer during trading week. */
             'monthWindow' => $this->monthWindow($cycle->monthFor($today)),
+            'walletFloat' => $widgets['wallets'] ? $this->walletFloat($cycle) : null,
         ]);
     }
 
@@ -79,6 +86,7 @@ class DashboardController extends Controller
             'fund' => $user->can('fund.view'),
             'compliance' => $user->can('reports.view'),
             'shareout' => $user->can('payouts.approve') || $user->can('payouts.execute'),
+            'wallets' => $user->can('payments.view'),
         ];
     }
 
@@ -107,6 +115,35 @@ class DashboardController extends Controller
         }
 
         return $overview;
+    }
+
+    /**
+     * What the group owes its members, and whether last night's check agreed.
+     *
+     * The variance is read from the recorded run rather than computed here: the check
+     * asks the provider for its balance, and a dashboard load is not the place for a
+     * network call. The liability itself is a SUM and is always current.
+     *
+     * @return array<string, mixed>
+     */
+    protected function walletFloat(Cycle $cycle): array
+    {
+        $last = PaymentReconciliation::query()
+            ->forCycle($cycle)
+            ->whereNotNull('wallet_variance_ngwee')
+            ->latest('for_date')
+            ->first();
+
+        return [
+            'liability_ngwee' => $this->wallets->memberLiabilityNgwee($cycle),
+            'group_ngwee' => $this->wallets->walletTotalNgwee($cycle)
+                - $this->wallets->memberLiabilityNgwee($cycle),
+            'checked_on' => $last?->for_date?->toDateString(),
+            'variance_ngwee' => $last === null
+                ? null
+                : Kwacha::toNgwee($last->wallet_variance_ngwee),
+            'balances' => $last?->walletsBalance(),
+        ];
     }
 
     /**

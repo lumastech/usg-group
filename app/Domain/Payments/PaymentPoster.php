@@ -8,6 +8,8 @@ use App\Domain\Savings\SavingsLedger;
 use App\Domain\SocialFund\GrantClaimService;
 use App\Domain\SocialFund\SocialFundLedger;
 use App\Domain\Trading\TradingSessionService;
+use App\Domain\Wallets\TopUpService;
+use App\Domain\Wallets\WithdrawalService;
 use App\Enums\LoanTransactionType;
 use App\Enums\PaymentPurpose;
 use App\Enums\PaymentStatus;
@@ -51,6 +53,8 @@ class PaymentPoster
         protected GrantClaimService $grants,
         protected TradingSessionService $trading,
         protected LoanDisbursementQueue $disbursements,
+        protected TopUpService $topUps,
+        protected WithdrawalService $withdrawals,
     ) {}
 
     /**
@@ -117,10 +121,12 @@ class PaymentPoster
             PaymentPurpose::JoiningFee => $this->postJoiningFee($intent),
             PaymentPurpose::LoanRepayment => $this->postRepayment($intent),
             PaymentPurpose::SocialFundContribution => $this->postFundContribution($intent),
+            PaymentPurpose::WalletTopUp => $this->creditWallet($intent),
             PaymentPurpose::LoanDisbursement => $this->postDisbursement($intent),
             PaymentPurpose::Payout, PaymentPurpose::ShareOut => $this->stampPayout($intent),
             PaymentPurpose::FuneralGrant, PaymentPurpose::UnityBabyGrant => $this->payGrant($intent),
             PaymentPurpose::DiasporaApportionment => $this->stampApportionment($intent),
+            PaymentPurpose::WalletWithdrawal => $this->settleWithdrawal($intent),
         };
     }
 
@@ -178,6 +184,30 @@ class PaymentPoster
          * part is done: the money is on the sheet and the month will carry it.
          */
         return null;
+    }
+
+    /**
+     * The whole of the collection branch, once wallets carry the rest.
+     *
+     * A settled top-up credits a wallet. There is nothing to refuse and nothing to
+     * decide: this is the payment path that cannot leave money settled at the provider
+     * with no home in the books.
+     */
+    protected function creditWallet(PaymentIntent $intent): Model
+    {
+        return $this->topUps->fromPayment($intent);
+    }
+
+    /**
+     * A withdrawal that reached the member.
+     *
+     * The wallet was debited when the transfer was initiated, so there is nothing left
+     * to move — only the fee to square up, because the provider tells us what it
+     * actually charged when the money has already gone.
+     */
+    protected function settleWithdrawal(PaymentIntent $intent): ?Model
+    {
+        return $this->withdrawals->settleFee($intent);
     }
 
     protected function postJoiningFee(PaymentIntent $intent): Model

@@ -58,6 +58,7 @@ use App\Http\Controllers\App\TradingController;
 use App\Http\Controllers\App\TradingEntryController;
 use App\Http\Controllers\App\TradingSessionController;
 use App\Http\Controllers\App\UnityBabyClaimController;
+use App\Http\Controllers\App\WalletController;
 use App\Http\Controllers\App\WorkbookImportController;
 use Illuminate\Support\Facades\Route;
 
@@ -179,6 +180,25 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
      * alone: every outflow additionally carries a second signature checked inside the
      * domain, so `fund.approve-outflow` opens the dialog rather than the till.
      */
+    /*
+     * The wallet float. What the group owes its members on demand — a liability, never
+     * group funds — and whether it is backed by money the group actually holds.
+     */
+    Route::middleware('permission:payments.view')->group(function () {
+        Route::get('wallets', [WalletController::class, 'index'])->name('wallets.index');
+        Route::get('wallets/{wallet}', [WalletController::class, 'show'])->name('wallets.show');
+    });
+
+    /*
+     * Cash at the table. In is the authority a treasurer already has when recording a
+     * cash contribution; out carries two signatures whatever the amount, because a
+     * banknote leaves no record anywhere but the wallet entry.
+     */
+    Route::middleware('permission:payments.initiate')->group(function () {
+        Route::post('wallets/cash-in', [WalletController::class, 'cashIn'])->name('wallets.cash-in');
+        Route::post('wallets/cash-out', [WalletController::class, 'cashOut'])->name('wallets.cash-out');
+    });
+
     Route::get('fund', [SocialFundController::class, 'index'])->name('fund.index');
     Route::get('fund/ledger', SocialFundLedgerController::class)->name('fund.ledger');
     Route::get('fund/export/{format}', SocialFundExportController::class)

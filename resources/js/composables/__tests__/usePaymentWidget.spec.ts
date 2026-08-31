@@ -119,6 +119,28 @@ describe('usePaymentWidget', () => {
         );
     });
 
+    it('tells apart a page that never ran from one that refused the payment', async () => {
+        stubSdk();
+
+        const { error, open } = usePaymentWidget();
+
+        open(payment);
+        await vi.advanceTimersByTimeAsync(0);
+
+        /* Their page ran and asked for the payment — then would not take it. */
+        window.dispatchEvent(
+            new MessageEvent('message', {
+                data: { type: 'lenco:app-loaded' },
+                origin: 'https://pay.lenco.co',
+            }),
+        );
+
+        await vi.advanceTimersByTimeAsync(20_000);
+
+        expect(error.value).toContain('would not start this card payment');
+        expect(error.value).not.toContain('did not load');
+    });
+
     it('leaves a widget that did come up alone', async () => {
         stubSdk();
 

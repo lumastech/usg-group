@@ -6,6 +6,7 @@ use App\Domain\Declarations\DeclarationService;
 use App\Domain\Payments\Lenco\LencoOperator;
 use App\Domain\Savings\SavingsLedger;
 use App\Domain\SocialFund\SocialFundContributions;
+use App\Domain\Wallets\TopUpService;
 use App\Enums\LoanStatus;
 use App\Enums\MobileMoneyOperator;
 use App\Enums\PaymentChannel;
@@ -39,6 +40,7 @@ class CollectionInitiator
         protected SavingsLedger $savings,
         protected SocialFundContributions $fund,
         protected DeclarationService $declarations,
+        protected TopUpService $topUps,
     ) {}
 
     /**
@@ -233,6 +235,60 @@ class CollectionInitiator
             month: $month,
             phone: $phone,
             operator: $operator,
+        );
+    }
+
+    /**
+     * Money into the member's own wallet, and nowhere else yet.
+     *
+     * No domain rule is consulted, deliberately. There is no rule under which the group
+     * will not take money into a member's own wallet, so this cannot produce the
+     * failure the rest of this class exists to avoid: settled money the ledger then
+     * refuses. The rules apply when the member pays the group out of the wallet, where
+     * a refusal costs nothing because the money is still theirs.
+     */
+    public function topUp(
+        Member $member,
+        Cycle $cycle,
+        Money $amount,
+        Member $actor,
+        ?string $phone = null,
+        ?MobileMoneyOperator $operator = null,
+    ): PaymentIntent {
+        $this->topUps->assertAboveMinimum(Kwacha::toNgwee($amount));
+
+        return $this->start(
+            PaymentPurpose::WalletTopUp,
+            $member,
+            $amount,
+            $actor,
+            $cycle,
+            phone: $phone,
+            operator: $operator,
+        );
+    }
+
+    /**
+     * The same top-up, on the provider's hosted page instead of a handset.
+     *
+     * Nothing is sent anywhere: the intent is written down so the reference exists and
+     * the member finishes the payment in the widget, which is the only place a card
+     * number is ever typed.
+     */
+    public function topUpByCard(Member $member, Cycle $cycle, Money $amount, Member $actor): PaymentIntent
+    {
+        $ngwee = Kwacha::toNgwee($amount);
+
+        $this->topUps->assertAboveMinimum($ngwee);
+        $this->assertAboveMinimum($ngwee);
+
+        return $this->intents->create(
+            cycle: $cycle,
+            purpose: PaymentPurpose::WalletTopUp,
+            amountNgwee: $ngwee,
+            channel: PaymentChannel::Card,
+            member: $member,
+            requestedBy: $actor,
         );
     }
 

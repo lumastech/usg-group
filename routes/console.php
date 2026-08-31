@@ -85,3 +85,16 @@ Schedule::command('unity:reconcile-payments')
     ->dailyAt('02:30')
     ->timezone('Africa/Lusaka')
     ->withoutOverlapping();
+
+/*
+| The wallet float, checked every morning against money the group actually holds.
+|
+| Runs after the payment reconciliation so both figures come from the same settled
+| picture. A mismatch exits non-zero: this is the only check that catches a wallet
+| credited with nothing behind it, and it has to be alarmed on rather than filed.
+*/
+
+Schedule::command('unity:reconcile-wallets')
+    ->dailyAt('02:45')
+    ->timezone('Africa/Lusaka')
+    ->withoutOverlapping();
