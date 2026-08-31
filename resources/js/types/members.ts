@@ -88,9 +88,15 @@ export type NextOfKinDraft = {
     relationship_label: string;
 };
 
-/** The registration form's shape. `next_of_kin` is the repeater's rows. */
+/**
+ * The registration form's shape. `next_of_kin` is the repeater's rows.
+ *
+ * `email` is the address on the member's portal login rather than a column on the
+ * member record, so it is only sent when correcting a member who has one.
+ */
 export type MemberFormData = {
     full_name: string;
+    email?: string;
     nrc_number: string;
     phone: string;
     physical_address: string;

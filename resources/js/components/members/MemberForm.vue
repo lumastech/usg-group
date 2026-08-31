@@ -6,6 +6,10 @@
  * moment and changing them later would rewrite which fee tier the member joined
  * under. The K2,000 late-registration minimum surfaces as soon as the chosen join
  * date lands in the cycle's third month.
+ *
+ * The email is the address on the member's portal login, so it only appears when
+ * correcting a member and is read-only until a login has been attached — that is
+ * the invitation's job, not this form's.
  */
 import { computed } from 'vue';
 
@@ -24,12 +28,16 @@ import type {
 } from '@/types/members';
 import NextOfKinRepeater from './NextOfKinRepeater.vue';
 
-const props = defineProps<{
-    errors: Partial<Record<string, string>>;
-    relationships: EnumOption[];
-    registration: RegistrationState;
-    mode: 'create' | 'edit';
-}>();
+const props = withDefaults(
+    defineProps<{
+        errors: Partial<Record<string, string>>;
+        relationships: EnumOption[];
+        registration: RegistrationState;
+        mode: 'create' | 'edit';
+        hasLogin?: boolean;
+    }>(),
+    { hasLogin: false },
+);
 
 const form = defineModel<MemberFormData>({ required: true });
 
@@ -111,6 +119,31 @@ const minimumFeeNgwee = computed(() =>
                         v-model="form.phone"
                         :invalid="invalid"
                         placeholder="09…"
+                    />
+                </template>
+            </FormField>
+
+            <FormField
+                v-if="!isCreate"
+                label="Email"
+                :error="errors.email"
+                :hint="
+                    hasLogin
+                        ? 'The address on the member\'s portal login. Changing it moves every password reset with it.'
+                        : 'No portal login yet — invite the member from their profile to give them one.'
+                "
+                :required="hasLogin"
+                class="sm:col-span-2"
+            >
+                <template #default="{ id, invalid }">
+                    <TextInput
+                        :id="id"
+                        v-model="form.email"
+                        type="email"
+                        :invalid="invalid"
+                        :disabled="!hasLogin"
+                        autocomplete="off"
+                        placeholder="name@example.com"
                     />
                 </template>
             </FormField>

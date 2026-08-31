@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\App;
 
 use App\Domain\Cycles\CurrentCycle;
+use App\Domain\Members\MemberEmailUpdater;
 use App\Domain\Members\MembershipRegistrar;
 use App\Enums\ExpulsionGround;
 use App\Enums\MemberStatus;
 use App\Enums\NextOfKinRelationship;
 use App\Enums\Permission;
+use App\Exceptions\DomainRuleException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Members\StoreMemberRequest;
 use App\Http\Requests\Members\UpdateMemberRequest;
@@ -128,9 +130,20 @@ class MemberController extends Controller
         ]);
     }
 
-    public function update(UpdateMemberRequest $request, Member $member): RedirectResponse
-    {
-        $member->update($request->safe()->except('next_of_kin'));
+    public function update(
+        UpdateMemberRequest $request,
+        Member $member,
+        MemberEmailUpdater $emailUpdater,
+    ): RedirectResponse {
+        if ($request->filled('email')) {
+            try {
+                $emailUpdater->update($member, $request->string('email')->toString(), $request->user());
+            } catch (DomainRuleException $exception) {
+                return back()->withErrors(['email' => $exception->getMessage()])->withInput();
+            }
+        }
+
+        $member->update($request->safe()->except('next_of_kin', 'email'));
 
         $this->registrar->syncNextOfKin($member, $request->array('next_of_kin'));
 

@@ -4,6 +4,9 @@
  *
  * Join date and joining fee are absent by design: they fix which tier the member
  * joined under, and a correction to those belongs in a reversing entry, not here.
+ *
+ * The email is only sent for a member who already has a portal login: it is that
+ * login's address, and attaching one is the invitation's job.
  */
 import { Link, useForm } from '@inertiajs/vue3';
 
@@ -28,6 +31,7 @@ const member = props.member;
 
 const form = useForm<MemberFormData>({
     full_name: member.full_name,
+    email: member.has_login ? (member.email ?? '') : '',
     nrc_number: member.nrc_number ?? '',
     phone: member.phone ?? '',
     physical_address: member.physical_address ?? '',
@@ -59,6 +63,7 @@ function submit(): void {
                 <MemberForm
                     v-model="form"
                     mode="edit"
+                    :has-login="member.has_login"
                     :errors="form.errors"
                     :relationships="relationships"
                     :registration="registration"
