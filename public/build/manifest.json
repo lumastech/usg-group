@@ -652,7 +652,7 @@
     "isEntry": true
   },
   "resources/js/app.ts": {
-    "file": "assets/app-Dfnlocx7.js",
+    "file": "assets/app-BB-ycqtB.js",
     "name": "app",
     "src": "resources/js/app.ts",
     "isEntry": true,
@@ -1707,7 +1707,7 @@
     ]
   },
   "resources/js/pages/my/Wallet.vue": {
-    "file": "assets/Wallet-Wj2a6IsU.js",
+    "file": "assets/Wallet-BTcPLmkE.js",
     "name": "Wallet",
     "src": "resources/js/pages/my/Wallet.vue",
     "isDynamicEntry": true,
