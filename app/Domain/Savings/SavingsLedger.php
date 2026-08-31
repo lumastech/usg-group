@@ -80,17 +80,17 @@ class SavingsLedger
         $minimum = Kwacha::toNgwee($cycle->min_savings_ngwee);
         $increment = Kwacha::toNgwee($cycle->savings_increment_ngwee);
 
-        // if ($ngwee < $minimum) {
-        //     throw new InvalidSavingsAmountException(
-        //         'Monthly savings must be at least '.Kwacha::format($cycle->min_savings_ngwee).'.'
-        //     );
-        // }
+        if ($ngwee < $minimum) {
+            throw new InvalidSavingsAmountException(
+                'Monthly savings must be at least '.Kwacha::format($cycle->min_savings_ngwee).'.'
+            );
+        }
 
-        // if ($ngwee % $increment !== 0) {
-        //     throw new InvalidSavingsAmountException(
-        //         'Savings must be in increments of '.Kwacha::format($cycle->savings_increment_ngwee).'.'
-        //     );
-        // }
+        if ($ngwee % $increment !== 0) {
+            throw new InvalidSavingsAmountException(
+                'Savings must be in increments of '.Kwacha::format($cycle->savings_increment_ngwee).'.'
+            );
+        }
 
         $cap = $cycle->savingsCapForMonth($month->sequence);
 

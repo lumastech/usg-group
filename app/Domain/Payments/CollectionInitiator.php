@@ -236,6 +236,9 @@ class CollectionInitiator
         );
     }
 
+    /**
+     * The K250 the constitution asks for once, pushed to the member's handset.
+     */
     public function socialFund(
         Member $member,
         Cycle $cycle,
@@ -245,7 +248,7 @@ class CollectionInitiator
         ?string $phone = null,
         ?MobileMoneyOperator $operator = null,
     ): PaymentIntent {
-        $this->fund->assertPayable($member, $cycle, $amount);
+        $this->assertFundContributionCollectable($member, $cycle, $amount);
 
         return $this->start(
             PaymentPurpose::SocialFundContribution,
@@ -257,6 +260,71 @@ class CollectionInitiator
             phone: $phone,
             operator: $operator,
         );
+    }
+
+    /**
+     * The same contribution, paid on the provider's hosted page instead of a handset.
+     *
+     * Nothing is sent anywhere: the intent is written down so the reference exists and
+     * the member finishes the payment in the widget, which is also the only place a
+     * card number is ever typed. Same amount, same refusals as the prompt — a card must
+     * not be a way around a rule that stops a phone.
+     */
+    public function socialFundByCard(
+        Member $member,
+        Cycle $cycle,
+        Money $amount,
+        Member $actor,
+        ?CycleMonth $month = null,
+    ): PaymentIntent {
+        $this->assertFundContributionCollectable($member, $cycle, $amount);
+
+        $ngwee = Kwacha::toNgwee($amount);
+
+        $this->assertAboveMinimum($ngwee);
+
+        return $this->intents->create(
+            cycle: $cycle,
+            purpose: PaymentPurpose::SocialFundContribution,
+            amountNgwee: $ngwee,
+            channel: PaymentChannel::Card,
+            member: $member,
+            month: $month,
+            requestedBy: $actor,
+        );
+    }
+
+    /**
+     * Every reason the contribution may not be collected, whichever rail it comes in on.
+     *
+     * The fund takes this money once for the whole cycle, so a prompt already standing
+     * is not something to send a second one against: two approved prompts take K500
+     * from a member the ledger will only credit K250. A prompt nobody answered inside
+     * the give-up window is released here rather than left blocking the next attempt.
+     */
+    public function assertFundContributionCollectable(Member $member, Cycle $cycle, Money $amount): void
+    {
+        $this->fund->assertPayable($member, $cycle, $amount);
+
+        $standing = $this->standingFundContribution($member, $cycle);
+
+        if ($standing !== null && $this->intents->abandonStalled($standing)) {
+            $standing = $this->standingFundContribution($member, $cycle);
+        }
+
+        if ($standing !== null) {
+            throw DomainRuleException::make(
+                $standing->status->hasSucceeded()
+                    ? 'Your social fund contribution has already been paid.'
+                    : 'A payment for your social fund contribution has already been started — approve the '
+                        .'prompt on your phone, or wait for it to time out before starting another.'
+            );
+        }
+    }
+
+    protected function standingFundContribution(Member $member, Cycle $cycle): ?PaymentIntent
+    {
+        return $this->intents->standingFor($member, PaymentPurpose::SocialFundContribution, $cycle);
     }
 
     /**

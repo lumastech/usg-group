@@ -229,6 +229,25 @@ class PaymentIntentService
         return true;
     }
 
+    /**
+     * The payment standing against a member's once-per-cycle dues, if there is one.
+     *
+     * A contribution paid once for the whole cycle has no payable row to hang the
+     * question on, so the purpose and the cycle are what identify it. Failed and
+     * abandoned attempts are not standing — nothing moved, and the member is free to
+     * try again.
+     */
+    public function standingFor(Member $member, PaymentPurpose $purpose, Cycle $cycle): ?PaymentIntent
+    {
+        return PaymentIntent::query()
+            ->forCycle($cycle)
+            ->where('member_id', $member->id)
+            ->where('purpose', $purpose->value)
+            ->whereNotIn('status', [PaymentStatus::Failed->value, PaymentStatus::Abandoned->value])
+            ->latest('id')
+            ->first();
+    }
+
     /** Ties the payment to the ledger row it produced. Idempotent by unique index. */
     public function markPosted(PaymentIntent $intent, Model $transaction): void
     {

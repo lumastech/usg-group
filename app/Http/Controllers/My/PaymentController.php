@@ -252,8 +252,11 @@ class PaymentController extends Controller
     ): void {
         match ($request->purpose()) {
             PaymentPurpose::SavingsContribution => $this->assertSavingsPayable($member, $this->requireMonth($month), $amount),
-            PaymentPurpose::SocialFundContribution => app(SocialFundContributions::class)
-                ->assertPayable($member, $member->cycle, $amount),
+            /* Through the initiator, so the card path is held to the same refusal a
+               prompt is: the fund credits this contribution once, and a second payment
+               against one already standing takes the money twice. */
+            PaymentPurpose::SocialFundContribution => $this->initiator
+                ->assertFundContributionCollectable($member, $member->cycle, $amount),
             PaymentPurpose::JoiningFee => $member->joining_fee_paid
                 ? throw DomainRuleException::make('Your joining fee is already paid.')
                 : app(SavingsLedger::class)->assertMemberMaySave($member),

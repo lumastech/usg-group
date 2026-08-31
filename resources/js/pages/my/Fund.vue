@@ -7,8 +7,15 @@
  * to point at somebody else and nothing to hide on the client.
  */
 import { useForm } from '@inertiajs/vue3';
-import { Baby, CheckCircle2, HeartHandshake, Info } from '@lucide/vue';
-import { ref } from 'vue';
+import {
+    Baby,
+    CheckCircle2,
+    CreditCard,
+    HeartHandshake,
+    Info,
+    Smartphone,
+} from '@lucide/vue';
+import { computed, ref } from 'vue';
 
 import {
     AppButton,
@@ -24,9 +31,11 @@ import {
     TextInput,
 } from '@/components/unity';
 import type { SelectOption } from '@/components/unity';
+import { usePaymentWidget } from '@/composables/usePaymentWidget';
 import MemberLayout from '@/layouts/unity/MemberLayout.vue';
 import { formatMoney } from '@/lib/money';
 import type { FundEntry, FundRules, GrantClaim } from '@/types/fund';
+import type { PaymentIntent } from '@/types/payments';
 
 const props = defineProps<{
     member: { id: number; full_name: string; member_number: number } | null;
@@ -36,6 +45,9 @@ const props = defineProps<{
     babyClaims: GrantClaim[];
     relationships: SelectOption[];
     rules: FundRules | null;
+    /** The payment standing against the contribution, if one was started. */
+    payment: PaymentIntent | null;
+    abilities: { pay: boolean };
 }>();
 
 const today = new Date().toISOString().slice(0, 10);
@@ -58,6 +70,54 @@ const babyForm = useForm({
     claim_date: today,
     note: '',
 });
+
+/* The provider's hosted page, when the member would rather pay by card. Null when no
+   gateway is configured, which is what hides the card button entirely. */
+const { widget, openIfStarted, verify } = usePaymentWidget();
+
+const payForm = useForm({ channel: 'mobile_money' });
+
+const paying = computed<'mobile_money' | 'card' | null>(() =>
+    payForm.processing ? (payForm.channel as 'mobile_money' | 'card') : null,
+);
+
+/** A prompt on the handset, waiting for the member to approve it. */
+const waitingOnPhone = computed<boolean>(() =>
+    ['draft', 'pending', 'awaiting-authorization'].includes(
+        props.payment?.status ?? '',
+    ),
+);
+
+/**
+ * Nobody approved the prompt inside the give-up window, so the server no longer treats
+ * it as a payment in flight. Saying so plainly is the point: telling a member to
+ * approve a prompt their phone no longer has is what leaves them stuck.
+ */
+const stalled = computed<boolean>(() => props.payment?.has_stalled === true);
+
+/**
+ * Pays the contribution, on whichever rail the member picked.
+ *
+ * No amount goes up with it — the constitution sets one figure and the server takes it
+ * from the cycle, so there is nothing here to get wrong.
+ */
+function pay(channel: 'mobile_money' | 'card'): void {
+    payForm.channel = channel;
+
+    payForm.post('/my/fund/pay', {
+        preserveScroll: true,
+        onSuccess: () => {
+            openIfStarted();
+        },
+    });
+}
+
+/** Asks the provider what became of the payment; the browser is never believed. */
+function checkPayment(): void {
+    if (props.payment) {
+        verify(props.payment.id);
+    }
+}
 
 function submitFuneral(): void {
     funeralForm.post('/my/fund/claims/funeral', {
@@ -103,9 +163,108 @@ function submitBaby(): void {
                 :hint="
                     contribution.paid
                         ? 'Paid once for the whole cycle'
-                        : 'Paid once, in full, to a treasurer'
+                        : 'Paid once, in full — from your phone or to a treasurer'
                 "
             />
+
+            <!-- The contribution is paid once for the whole cycle, so this whole
+                 block disappears the moment it is in. There is nothing to fill in
+                 either: the amount is the constitution's, and the server takes it from
+                 the cycle rather than from anything typed here. -->
+            <AppCard
+                v-if="!contribution.paid"
+                title="Pay your contribution"
+                :description="`${formatMoney(contribution.expected_ngwee)}, in full and once — the fund cannot take part of it.`"
+            >
+                <div class="space-y-3">
+                    <!-- A prompt already on the handset is shown instead of a second
+                         button: two approved prompts take K500 for a contribution the
+                         fund credits once. -->
+                    <div
+                        v-if="payment && !stalled"
+                        class="rounded-xl border border-border bg-muted px-4 py-3"
+                    >
+                        <p class="text-sm font-medium text-card-foreground">
+                            {{ payment.member_status_label }}
+                        </p>
+                        <p
+                            v-if="payment.status_reason"
+                            class="text-xs text-muted-foreground"
+                        >
+                            {{ payment.status_reason }}
+                        </p>
+                    </div>
+
+                    <!-- Nobody approved it. Saying so plainly is the whole point:
+                         telling a member to approve a prompt their phone no longer has
+                         is what leaves them stuck. -->
+                    <div
+                        v-else-if="stalled"
+                        class="rounded-xl border border-gold-300 bg-gold-50 px-4 py-3 dark:border-gold-400/30 dark:bg-gold-400/10"
+                    >
+                        <p class="text-sm font-medium text-card-foreground">
+                            That prompt was not approved in time
+                        </p>
+                        <p class="text-xs text-muted-foreground">
+                            {{
+                                payment?.status_reason ??
+                                'Nothing was taken from your wallet. Start it again below.'
+                            }}
+                        </p>
+                    </div>
+
+                    <AppButton
+                        v-if="waitingOnPhone && !stalled"
+                        block
+                        variant="outline"
+                        @click="checkPayment"
+                    >
+                        Check the payment
+                    </AppButton>
+
+                    <template v-if="abilities.pay">
+                        <AppButton
+                            block
+                            :loading="paying === 'mobile_money'"
+                            :disabled="payForm.processing"
+                            @click="pay('mobile_money')"
+                        >
+                            <template #icon
+                                ><Smartphone class="size-4"
+                            /></template>
+                            {{
+                                stalled
+                                    ? 'Try again — send a new prompt'
+                                    : `Pay ${formatMoney(contribution.expected_ngwee)} now`
+                            }}
+                        </AppButton>
+
+                        <!-- The card never touches this application: the provider's
+                             own page takes it. -->
+                        <AppButton
+                            v-if="widget"
+                            block
+                            variant="outline"
+                            :loading="paying === 'card'"
+                            :disabled="payForm.processing"
+                            @click="pay('card')"
+                        >
+                            <template #icon
+                                ><CreditCard class="size-4"
+                            /></template>
+                            Pay by card instead
+                        </AppButton>
+
+                        <p class="text-xs text-muted-foreground">
+                            The prompt goes to the mobile money number on your
+                            record — approve it on your handset. Card opens the
+                            payment provider's own page; your card details never
+                            reach us. You can still pay a treasurer in cash
+                            instead.
+                        </p>
+                    </template>
+                </div>
+            </AppCard>
 
             <AppCard
                 title="Claim on the fund"

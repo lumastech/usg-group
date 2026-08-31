@@ -10,6 +10,7 @@ use App\Http\Controllers\My\ProfileController;
 use App\Http\Controllers\My\SavingsController;
 use App\Http\Controllers\My\SettingsController;
 use App\Http\Controllers\My\SocialFundController;
+use App\Http\Controllers\My\SocialFundPaymentController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -59,6 +60,12 @@ Route::middleware(['auth', 'verified'])->prefix('my')->name('my.')->group(functi
     Route::get('fund', [SocialFundController::class, 'show'])->name('fund');
     Route::post('fund/claims/funeral', [SocialFundController::class, 'storeFuneralClaim'])->name('fund.claims.funeral');
     Route::post('fund/claims/baby', [SocialFundController::class, 'storeBabyClaim'])->name('fund.claims.baby');
+
+    /*
+     * Paying the K250 without leaving the screen it is asked for on. The amount is the
+     * cycle's and not the member's, so there is nothing in the request but the rail.
+     */
+    Route::post('fund/pay', [SocialFundPaymentController::class, 'store'])->name('fund.pay');
 
     /*
      * Paying what you owe, from your own phone. No permission is checked, in keeping
