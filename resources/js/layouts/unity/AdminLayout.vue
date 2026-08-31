@@ -14,6 +14,7 @@ import { Toast } from '@/components/unity';
 import { useNavigation } from '@/composables/useNavigation';
 import { usePermissions } from '@/composables/usePermissions';
 import { cn } from '@/lib/utils';
+import { edit as editProfile } from '@/routes/profile';
 import CycleBanner from './CycleBanner.vue';
 import PortalSwitcher from './PortalSwitcher.vue';
 
@@ -118,23 +119,30 @@ watch(
 
             <div class="space-y-1 border-t border-sidebar-border p-3">
                 <PortalSwitcher tone="dark" class="w-full" />
-                <div class="flex items-center gap-3 rounded-lg px-3 py-2">
-                    <span
-                        class="grid size-8 shrink-0 place-items-center rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground"
+                <div class="flex items-center gap-1">
+                    <!-- The name block is the way into the account screens:
+                         password, two-factor and email live at /settings. -->
+                    <Link
+                        :href="editProfile()"
+                        class="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-sidebar-accent"
                     >
-                        {{ user?.name?.charAt(0) ?? '?' }}
-                    </span>
-                    <span class="min-w-0 flex-1">
                         <span
-                            class="block truncate text-xs font-medium text-sidebar-foreground"
-                            >{{ user?.name }}</span
+                            class="grid size-8 shrink-0 place-items-center rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground"
                         >
-                        <span
-                            class="block truncate text-[0.6875rem] text-sidebar-foreground/55"
-                        >
-                            {{ primaryRoleLabel ?? 'Member' }}
+                            {{ user?.name?.charAt(0) ?? '?' }}
                         </span>
-                    </span>
+                        <span class="min-w-0 flex-1 text-left">
+                            <span
+                                class="block truncate text-xs font-medium text-sidebar-foreground"
+                                >{{ user?.name }}</span
+                            >
+                            <span
+                                class="block truncate text-[0.6875rem] text-sidebar-foreground/55"
+                            >
+                                {{ primaryRoleLabel ?? 'Member' }}
+                            </span>
+                        </span>
+                    </Link>
                     <Link
                         href="/logout"
                         method="post"

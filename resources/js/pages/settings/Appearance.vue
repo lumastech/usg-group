@@ -1,19 +1,7 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
-import Heading from '@/components/Heading.vue';
-import { edit } from '@/routes/appearance';
-
-defineOptions({
-    layout: {
-        breadcrumbs: [
-            {
-                title: 'Appearance settings',
-                href: edit(),
-            },
-        ],
-    },
-});
+import { AppCard } from '@/components/unity';
 </script>
 
 <template>
@@ -21,12 +9,10 @@ defineOptions({
 
     <h1 class="sr-only">Appearance settings</h1>
 
-    <div class="space-y-6">
-        <Heading
-            variant="small"
-            title="Appearance settings"
-            description="Update the appearance settings for your account"
-        />
+    <AppCard
+        title="Appearance"
+        description="How the portal looks on this device"
+    >
         <AppearanceTabs />
-    </div>
+    </AppCard>
 </template>

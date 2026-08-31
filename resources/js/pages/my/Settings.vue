@@ -7,7 +7,15 @@
  * because that is what the server does rather than dropping the message.
  */
 import { Link, useForm } from '@inertiajs/vue3';
-import { Mail, MessageSquare, Smartphone, Wallet } from '@lucide/vue';
+import {
+    KeyRound,
+    Mail,
+    MessageSquare,
+    Palette,
+    Smartphone,
+    UserRound,
+    Wallet,
+} from '@lucide/vue';
 
 import {
     AppButton,
@@ -18,6 +26,9 @@ import {
     TextInput,
 } from '@/components/unity';
 import MemberLayout from '@/layouts/unity/MemberLayout.vue';
+import { edit as editAppearance } from '@/routes/appearance';
+import { edit as editProfile } from '@/routes/profile';
+import { edit as editSecurity } from '@/routes/security';
 
 const props = defineProps<{
     member: {
@@ -106,7 +117,9 @@ function submit(): void {
                 <div class="grid gap-2 sm:grid-cols-2">
                     <Link href="/my/payments" class="block">
                         <AppButton block variant="outline">
-                            <template #icon><Smartphone class="size-4" /></template>
+                            <template #icon
+                                ><Smartphone class="size-4"
+                            /></template>
                             Pay from this phone
                         </AppButton>
                     </Link>
@@ -173,5 +186,34 @@ function submit(): void {
                 </p>
             </AppCard>
         </template>
+
+        <!-- The login itself, for everyone: a member with no record still needs
+             to be able to change their password. -->
+        <AppCard
+            title="My login"
+            description="Your name and email address, your password and how you sign in."
+            class="mt-4"
+        >
+            <div class="grid gap-2 sm:grid-cols-3">
+                <Link :href="editProfile()" class="block">
+                    <AppButton block variant="outline">
+                        <template #icon><UserRound class="size-4" /></template>
+                        Name &amp; email
+                    </AppButton>
+                </Link>
+                <Link :href="editSecurity()" class="block">
+                    <AppButton block variant="outline">
+                        <template #icon><KeyRound class="size-4" /></template>
+                        Password
+                    </AppButton>
+                </Link>
+                <Link :href="editAppearance()" class="block">
+                    <AppButton block variant="outline">
+                        <template #icon><Palette class="size-4" /></template>
+                        Appearance
+                    </AppButton>
+                </Link>
+            </div>
+        </AppCard>
     </MemberLayout>
 </template>
