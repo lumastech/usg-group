@@ -39,6 +39,7 @@ use App\Http\Controllers\App\PayoutTransferController;
 use App\Http\Controllers\App\PayoutVoucherController;
 use App\Http\Controllers\App\ReportsController;
 use App\Http\Controllers\App\RiskController;
+use App\Http\Controllers\App\RoleController;
 use App\Http\Controllers\App\SavingsController;
 use App\Http\Controllers\App\SavingsDepositController;
 use App\Http\Controllers\App\SavingsExportController;
@@ -134,6 +135,24 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
             ->name('settings.calendar.update');
         Route::post('settings/calendar/{month}/reset', [CycleCalendarController::class, 'reset'])
             ->name('settings.calendar.reset');
+    });
+
+    /*
+     * Roles and their permissions. `roles.manage` is the one permission that can grant
+     * every other, so it belongs to the administrator alone — RoleManager refuses to
+     * put it in any other bundle, and this group is the only way in.
+     */
+    Route::middleware('permission:roles.manage')->group(function () {
+        Route::get('settings/roles', [RoleController::class, 'index'])
+            ->name('settings.roles');
+        Route::post('settings/roles', [RoleController::class, 'store'])
+            ->name('settings.roles.store');
+        Route::put('settings/roles/{role}', [RoleController::class, 'update'])
+            ->name('settings.roles.update');
+        Route::post('settings/roles/{role}/reset', [RoleController::class, 'reset'])
+            ->name('settings.roles.reset');
+        Route::delete('settings/roles/{role}', [RoleController::class, 'destroy'])
+            ->name('settings.roles.destroy');
     });
 
     /*

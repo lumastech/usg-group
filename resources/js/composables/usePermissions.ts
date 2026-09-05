@@ -5,6 +5,7 @@ import type {
     CurrentCycle,
     MemberRoleName,
     PermissionName,
+    RoleName,
     User,
 } from '@/types/auth';
 
@@ -51,7 +52,7 @@ export function usePermissions() {
     const permissions = computed<PermissionName[]>(
         () => user.value?.permissions ?? [],
     );
-    const roles = computed<MemberRoleName[]>(() => user.value?.roles ?? []);
+    const roles = computed<RoleName[]>(() => user.value?.roles ?? []);
 
     /** True when the user holds this permission. */
     function can(permission: PermissionName): boolean {
@@ -68,11 +69,11 @@ export function usePermissions() {
         return wanted.every((permission) => can(permission));
     }
 
-    function hasRole(role: MemberRoleName): boolean {
+    function hasRole(role: RoleName): boolean {
         return roles.value.includes(role);
     }
 
-    function hasAnyRole(wanted: MemberRoleName[]): boolean {
+    function hasAnyRole(wanted: RoleName[]): boolean {
         return wanted.some((role) => hasRole(role));
     }
 

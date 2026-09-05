@@ -55,6 +55,14 @@ enum Permission: string
     case CyclesManage = 'cycles.manage';
     case CyclesCalendar = 'cycles.calendar';
 
+    /**
+     * Defining the roles themselves and what each one may do.
+     *
+     * The one permission that can grant every other, so it stays with the
+     * administrator alone — see App\Domain\Roles\RoleManager.
+     */
+    case RolesManage = 'roles.manage';
+
     /** @return array<int, string> */
     public static function values(): array
     {
@@ -98,6 +106,7 @@ enum Permission: string
             self::AuditView => 'Review the audit trail',
             self::CyclesManage => 'Manage cycles',
             self::CyclesCalendar => 'Re-date the cycle calendar',
+            self::RolesManage => 'Manage roles and their permissions',
         };
     }
 }

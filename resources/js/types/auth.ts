@@ -17,7 +17,7 @@ export type User = {
     member_number: number | null;
     /** The member's own mobile number, used to prefill the provider's payment page. */
     phone?: string | null;
-    roles: MemberRoleName[];
+    roles: RoleName[];
     permissions: PermissionName[];
     [key: string]: unknown;
 };
@@ -25,6 +25,13 @@ export type User = {
 export type Auth = {
     user: User | null;
 };
+
+/**
+ * Any role a user may hold: one of the constitution's offices, or one the
+ * administrator added on the roles screen. Custom roles carry no label of their own
+ * here — only the offices below are named in the UI.
+ */
+export type RoleName = MemberRoleName | (string & {});
 
 /** Mirrors App\Enums\MemberRole. */
 export type MemberRoleName =
@@ -44,6 +51,7 @@ export type PermissionName =
     | 'declarations.view'
     | 'declarations.submit-own'
     | 'declarations.record'
+    | 'declarations.approve'
     | 'trading.operate'
     | 'loans.view'
     | 'loans.request'
@@ -63,7 +71,8 @@ export type PermissionName =
     | 'reports.view'
     | 'audit.view'
     | 'cycles.manage'
-    | 'cycles.calendar';
+    | 'cycles.calendar'
+    | 'roles.manage';
 
 /** Where in the month we are. Drives the dashboard banner and form availability. */
 export type CycleWindow =

@@ -24,6 +24,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Domain/Payouts/** | .ai/rules/payouts.md |
 | app/Domain/Reporting/** | .ai/rules/reporting.md |
 | app/Http/Resources/** | .ai/rules/resources.md |
+| app/Domain/Roles/** | .ai/rules/roles.md |
 | resources/js/routes/** | .ai/rules/routes.md |
 | app/Domain/Savings/** | .ai/rules/savings.md |
 | database/seeders/** | .ai/rules/seeders.md |

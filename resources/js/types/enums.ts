@@ -364,11 +364,12 @@ export const Permission = {
     AuditView: 'audit.view',
     CyclesManage: 'cycles.manage',
     CyclesCalendar: 'cycles.calendar',
+    RolesManage: 'roles.manage',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
 
-export const permissionValues: readonly Permission[] = ['members.view', 'members.manage', 'savings.view', 'savings.record', 'declarations.view', 'declarations.submit-own', 'declarations.record', 'declarations.approve', 'trading.operate', 'loans.view', 'loans.request', 'loans.approve', 'loans.disburse', 'loans.record-repayment', 'fund.view', 'fund.record', 'fund.approve-outflow', 'payouts.approve', 'payouts.execute', 'payments.view', 'payments.initiate', 'payments.retry', 'payments.reconcile', 'governance.record', 'reports.view', 'audit.view', 'cycles.manage', 'cycles.calendar'];
+export const permissionValues: readonly Permission[] = ['members.view', 'members.manage', 'savings.view', 'savings.record', 'declarations.view', 'declarations.submit-own', 'declarations.record', 'declarations.approve', 'trading.operate', 'loans.view', 'loans.request', 'loans.approve', 'loans.disburse', 'loans.record-repayment', 'fund.view', 'fund.record', 'fund.approve-outflow', 'payouts.approve', 'payouts.execute', 'payments.view', 'payments.initiate', 'payments.retry', 'payments.reconcile', 'governance.record', 'reports.view', 'audit.view', 'cycles.manage', 'cycles.calendar', 'roles.manage'];
 
 export const SavingsTransactionType = {
     Contribution: 'contribution',

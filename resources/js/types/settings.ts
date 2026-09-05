@@ -40,3 +40,42 @@ export type CalendarConstitution = {
     trading_start_day: number;
     disbursement_day: number;
 };
+
+/** The roles screen: the bundles of permissions, and what may be done to each. */
+
+export type RoleAbilities = {
+    /** False for the administrator, whose bundle is every permission by definition. */
+    editPermissions: boolean;
+    rename: boolean;
+    delete: boolean;
+    /** An office that has been re-scoped and can be put back on the constitution's bundle. */
+    reset: boolean;
+};
+
+export type ManagedRole = {
+    id: number;
+    /** The handle code matches on, e.g. `vice_treasurer`. */
+    name: string;
+    label: string;
+    description: string | null;
+    /** One of the constitution's offices: it may be re-scoped, never renamed or deleted. */
+    is_system: boolean;
+    /** An office whose bundle the committee changed here, so the seeder leaves it alone. */
+    customised: boolean;
+    /** How many logins hold this role — everyone who loses it if it is deleted. */
+    holders: number;
+    permissions: string[];
+    abilities: RoleAbilities;
+};
+
+export type PermissionOption = {
+    name: string;
+    label: string;
+};
+
+/** Permissions offered by the section of the portal they belong to, e.g. "Loans". */
+export type PermissionGroup = {
+    key: string;
+    label: string;
+    permissions: PermissionOption[];
+};

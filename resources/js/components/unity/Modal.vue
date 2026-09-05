@@ -108,7 +108,7 @@ onBeforeUnmount(() => {
             >
                 <div
                     v-if="open"
-                    class="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+                    class="fixed inset-0 z-50 flex items-end justify-center overscroll-contain sm:items-center"
                 >
                     <div
                         class="absolute inset-0 bg-brand-950/50 backdrop-blur-[2px]"
@@ -130,7 +130,7 @@ onBeforeUnmount(() => {
                             :aria-label="title"
                             :class="
                                 cn(
-                                    'relative m-0 w-full rounded-t-2xl bg-card shadow-pop sm:m-4 sm:rounded-2xl',
+                                    'relative m-0 flex max-h-[92dvh] w-full flex-col rounded-t-2xl bg-card shadow-pop sm:m-4 sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl',
                                     sizes[size],
                                     $props.class,
                                 )
@@ -138,7 +138,7 @@ onBeforeUnmount(() => {
                         >
                             <header
                                 v-if="title || description || $slots.header"
-                                class="flex items-start justify-between gap-4 border-b border-border px-5 py-4"
+                                class="flex shrink-0 items-start justify-between gap-4 border-b border-border px-5 py-4"
                             >
                                 <div class="min-w-0">
                                     <slot name="header">
@@ -166,13 +166,15 @@ onBeforeUnmount(() => {
                                 </button>
                             </header>
 
-                            <div class="px-5 py-4">
+                            <div
+                                class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4"
+                            >
                                 <slot />
                             </div>
 
                             <footer
                                 v-if="$slots.footer"
-                                class="flex items-center justify-end gap-2 border-t border-border px-5 py-4"
+                                class="flex shrink-0 items-center justify-end gap-2 border-t border-border px-5 py-4"
                             >
                                 <slot name="footer" />
                             </footer>
